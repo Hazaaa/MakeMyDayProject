@@ -1,0 +1,8 @@
+﻿@model Exception
+
+@{
+    ViewBag.Title = "Error";
+}
+
+<h1 class="text-danger">@Model.Message</h1>
+<h2 class="text-danger">@Model.InnerException</h2>

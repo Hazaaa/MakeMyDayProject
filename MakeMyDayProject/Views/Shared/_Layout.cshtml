@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make My Day</title>
+    <link href="~/Resource/makemydaytabicon.ico" rel="shortcut icon" type="image/x-icon" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+    @Styles.Render("~/Content/css")
+    @Scripts.Render("~/bundles/modernizr")
+
+</head>
+<body>
+    @using Microsoft.AspNet.Identity
+    @if (Request.IsAuthenticated)
+    {
+        <!--NAVBAR FOR LOGGED USER-->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-danger fixed-top">
+
+            <!--ICON-->
+            <a class="navbar-brand" href="@Url.Action("Index", "Home")" style="margin-left: 60px;">
+                <i class="fas fa-grin-squint-tears fa-spin fa-lg"></i>
+            </a>
+
+            <!--HAMBURGER FOR RESPONSIVENESS-->
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!--LINKS NEXT TO ICON THAT WILL BE COLLAPSED WHEN SCREEN IS SMALLER-->
+            <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
+                <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="@Url.Action("Index", "Home")">
+                            <i class="fa fa-home"></i>
+                            Home
+                            <span class="sr-only">(current)</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">
+                            <i class="fa fa-trophy"></i>
+                            Most Popular
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">
+                            <i class="fa fa-envelope-o"></i>
+                            Messages (11)
+                        </a>
+                    </li>
+                </ul>
+                <form class="form-inline my-2 my-lg-0">
+                    <input class="form-control mr-sm-2" type="search" placeholder="Search users">
+                    <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Search</button>
+                </form>
+                @Html.Partial("_LoginPartial")
+            </div>
+        </nav>
+    }
+    else
+    {
+        <!--NAVBAR FOR ANONYM VISITORS-->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-danger fixed-top">
+            <a class="navbar-brand" href="@Url.Action("Index", "Home")" style="margin-left: 60px;">
+                <i class="fas fa-grin-squint-tears fa-spin fa-lg"></i>
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
+                <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="@Url.Action("Index", "Home")">
+                            <i class="fa fa-home"></i>
+                            Home
+                            <span class="sr-only">(current)</span>
+                        </a>
+                    </li>
+                </ul>
+                @Html.Partial("_LoginPartial")
+            </div>
+        </nav>
+    }
+
+    <!--RENDERING PART-->
+    <div class="container body-content">
+        @RenderBody()
+        <hr />
+        <footer>
+            <p>&copy; @DateTime.Now.Year - Garbage Collectors</p>
+        </footer>
+    </div>
+
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    @RenderSection("scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,117 @@
+﻿@model  List<Databases.Neo4j.DomainModel.Post>
+@{
+    ViewBag.Title = "Home";
+}
+
+<div class="row">
+    <div class="col-4">
+        @if (Request.IsAuthenticated)
+        {
+            <!--PROFILE DETAILS-->
+            <div class="sideProfile bg-danger" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray;">
+                <p>hahaha</p>
+            </div>
+
+            <!--RECOMMENDED HASHTAGS FOR LOGGED USER-->
+            <div class="sideHashtags bg-danger" style="margin-bottom: 10px; margin-top: 10px; border: 0.3px solid gray;">
+                <p>buahahah</p>
+            </div>
+        }
+        else
+        {
+            <!--TRANDING HASHTAGS-->
+            <div class="hashtags bg-danger" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray ;">
+                <p>buahahah</p>
+            </div>
+        }
+    </div>
+    <div class="col-8" style="margin-bottom: 10px; margin-top: 20px;" id="postContainter">
+
+        @if (Request.IsAuthenticated)
+        {
+            <!--TEXTBOX FOR POSTING-->
+            <div class="card border-danger" style="width: 32rem; text-align: left; margin-bottom: 10px;">
+                <div class="card-body">
+                    <div class="profile-picture col-12">
+                        <img src="https://www.gettyimages.com/gi-resources/images/CreativeLandingPage/HP_Sept_24_2018/CR3_GettyImages-159018836.jpg" id="newPostPicture" class="rounded-circle">
+                        <textarea title="Write # to add hashtag." form="newPostForm" rows="2" cols="20" id="newPost" class="newPostArea" placeholder="Say something funny..."></textarea>
+                    </div>
+                    <form id="newPostForm">
+                        <label for="file-upload" class="custom-file-upload btn-outline-danger">
+                            <i class="fa fa-file-picture-o"></i>
+                        </label>
+                        <input id="file-upload" type="file" accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|images/*" />
+                        <button type="button" id="uploadButton" class="btn btn-primary pull-right btn-outline-danger" style="border-radius: 7px; margin-right: 15px;">Post</button>
+                    </form>
+                    <span><p style="font-size:10px; margin-left: 68px; color: #dc3545; display: none;" id="uploadedPicutreLable">Uploaded</p></span>
+                </div>
+            </div>
+        }
+
+
+        @if (Model != null)
+        {
+            <!--POSTS-->
+            for (int i = 0; i < Model.Count(); i++)
+            {
+                <div class="card border-danger" style="width: 32rem; text-align: left; margin-bottom: 10px;">
+                    <div class="card-header bg-danger" style="text-align: left;">
+                        <div class="profile-picture">
+                            <img src="~/Resource/defaultpic.jpg" width="50" height="50" class="rounded-circle" style="border: 0.5px solid gray;">
+                            <span class="username" style="padding-left: 15px; font-family: 'Franklin Gothic Medium'; font-size: 20px; color: white;">@Model[i].creator.username</span>
+                            <span class="timeposted" style="font-family: 'Franklin Gothic Medium'; font-size: 10px; color: lightgray">   - @Model[i].timeCreated</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">@Model[i].content</p>
+                    </div>
+                    <img class="card-img-bottom" src="..." alt="Card image cap">
+
+                    @if (Request.IsAuthenticated)
+                    {
+                        <div class="card-footer bg-transparent border-danger">
+                            <div class="row">
+                                <div class="btn-group btn-group-sm btn-group-toggle offset-4" data-toggle="buttons">
+                                    <label class="btn btn-danger active">
+                                        <input type="radio" name="options" id="like" autocomplete="off" checked> <i class="fas fa-thumbs-up"></i> Like (@Model[i].likes)
+                                    </label>
+                                    <label class="btn btn-danger">
+                                        <input type="radio" name="options" id="dislike" autocomplete="off"> <i class="fas fa-thumbs-down"></i> Dislike (@Model[i].dislikes)
+                                    </label>
+                                </div>
+                            </div>
+                            <hr />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card-footer bg-transparent border-danger">
+                            <div class="row">
+                                <div class="btn-group btn-group-sm btn-group-toggle offset-4" data-toggle="buttons">
+                                    <label class="btn btn-danger disabled">
+                                        <input type="radio" name="options" id="like" autocomplete="off"> <i class="fas fa-thumbs-up"></i> Like (@Model[i].likes)
+                                    </label>
+                                    <label class="btn btn-danger disabled">
+                                        <input type="radio" name="options" id="dislike" autocomplete="off"> <i class="fas fa-thumbs-down"></i> Dislike (@Model[i].dislikes)
+                                    </label>
+                                </div>
+                            </div>
+                            <hr />
+                            <div class="row">
+
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
+    <script type="text/javascript">
+        GetPosts(@Request.IsAuthenticated.ToString().ToLower());
+    </script>
+}
