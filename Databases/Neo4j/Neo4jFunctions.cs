@@ -110,9 +110,10 @@ namespace Databases.Neo4j
             // Parameters for query need to be in dictionary
             Dictionary<string, object> paramsDictionary = new Dictionary<string, object>();
             paramsDictionary.Add("text", newComment.text);
+            paramsDictionary.Add("id", newComment.id);
 
             // Merge helps that node is unique when creating node
-            var query = new Neo4jClient.Cypher.CypherQuery("CREATE (n:Comment { text: { text } }) return n",
+            var query = new Neo4jClient.Cypher.CypherQuery("CREATE (n:Comment { id: { id } , text: { text } }) return n",
                 paramsDictionary, CypherResultMode.Set);
 
             Comment comment = ((IRawGraphClient)client).ExecuteGetCypherResults<Comment>(query).ToList().FirstOrDefault();
@@ -125,10 +126,7 @@ namespace Databases.Neo4j
 
         // Creates relationship between post and user that created post
         public void CreatePostedRelationship(Posted posted)
-        {
-            // Create user node if isn't created
-            // CreateUserNode(posted.user);
-
+        { 
             // Create post node has to be unique
             CreatePostNode(posted.post);
 
@@ -212,7 +210,10 @@ namespace Databases.Neo4j
                     .Match("(post:Post)", "(user:User)")
                     .Where((Post post) => post.id == liked.post.id)
                     .AndWhere((User user) => user.username == liked.user.username)
-                    .Create("(user)-[r:LIKED {time: '" + liked.time + "'}]->(post)");
+                    .Merge("(user)-[l:LIKED]->(post)")
+                    .OnCreate()
+                    .Set("l.time = {time}")
+                    .WithParam("time", liked.time);
 
                 query.ExecuteWithoutResults();
             }
@@ -220,9 +221,12 @@ namespace Databases.Neo4j
             {
                 var query = client.Cypher
                     .Match("(post:Post)", "(user:User)")
-                    .Where((Post post) => post.id == liked.post.id)
+                    .Where((Post post) => post.id == disliked.post.id)
                     .AndWhere((User user) => user.username == disliked.user.username)
-                    .Create("(user)-[r:DISLIKED {time: '" + liked.time + "'}]->(post)");
+                    .Merge("(user)-[d:DISLIKED]->(post)")
+                    .OnCreate()
+                    .Set("d.time = {time}")
+                    .WithParam("time", disliked.time);
 
                 query.ExecuteWithoutResults();
             }
@@ -242,46 +246,157 @@ namespace Databases.Neo4j
         }
 
         // Creates realationship between post and comment and user and comment
-        public void CreateCommentRelationships(HasComment hasComment, Commented commented)
+        public bool CreateCommentRelationships(HasComment hasComment, Commented commented)
         {
             // Firts create comment node
             CreateCommentNode(hasComment.comment);
 
-            var query = client.Cypher
-                .Match("(user:User)", "(post:User)", "(comment:Comment)")
-                .Where((User user) => user.username == commented.commentator.username)
-                .AndWhere((Post post) => post.id == hasComment.post.id)
-                .AndWhere((Comment comment) => hasComment.comment.id == comment.id)
-                .Create("(post)-[r:HAS_COMMENT {time: '" + hasComment.time + "'}]->(comment)<-[ro:COMMENTED {time: '" + commented.time + "'}]-(user)");
+            //var query = client.Cypher
+            //    .Match("(user:User)", "(post:User)", "(comment:Comment)")
+            //    .Where((User user) => user.username == commented.commentator.username)
+            //    .AndWhere((Comment comment) => comment.id == hasComment.comment.id)
+            //    .AndWhere((Post post) => post.id == hasComment.post.id)
+            //    .Create("(post)-[r:HAS_COMMENT {time: '" + hasComment.time + "'}]->(comment)")
+            //    .Create("(user)-[ro:COMMENTED {time: '" + commented.time + "'}]->(comment)");
 
-            query.ExecuteWithoutResults();
+            //query.ExecuteWithoutResults();
 
+            // Parameters for query need to be in dictionary
+            Dictionary<string, object> paramsDictionary = new Dictionary<string, object>();
+            paramsDictionary.Add("text", hasComment.comment.text);
+            paramsDictionary.Add("commentid", hasComment.comment.id);
+            paramsDictionary.Add("postid", hasComment.post.id);
+            paramsDictionary.Add("username", commented.commentator.username);
+            paramsDictionary.Add("time", commented.time);
+
+            var query = new Neo4jClient.Cypher.CypherQuery("match (p:Post), (u:User), (c:Comment) where p.id = {postid} and u.username = {username} and c.id = {commentid}" +
+                " create (p)-[r:HAS_COMMENT {time: {time}}]->(c)<-[ro:COMMENTED {time: {time}}]-(u) return c",
+                paramsDictionary, CypherResultMode.Set);
+
+            Comment comment = ((IRawGraphClient)client).ExecuteGetCypherResults<Comment>(query).ToList().FirstOrDefault();
+
+            if (comment != null)
+                return true;
+            else
+                return false;
         }
+
         #endregion
 
 
         #region Get functions
 
         // Return all users
-        public List<User> GetAllUsers()
+        public IEnumerable<User> GetAllUsers()
         {
-            var query = new Neo4jClient.Cypher.CypherQuery("start n=node(*) where (n:User) and exists(n.id) return n",
-                                                            new Dictionary<string, object>(), CypherResultMode.Set);
+            var queryUsers = client.Cypher
+                .Match("(user:User)")
+                .Return<User>("user")
+                .Results;
 
-            List<User> users = ((IRawGraphClient)client).ExecuteGetCypherResults<User>(query).ToList();
-
-            if (users.Count != 0)
-                return users;
-            else
-                return null;
+            return queryUsers;
         }
 
-        // Return all posts and their data
-        public IEnumerable<Post> GetAllPosts()
+        // Returns user by username with simple data
+        public User GetUser(string username)
+        {
+            var queryUser = client.Cypher
+                .Match("(user:User)")
+                .Where((User user) => user.username == username)
+                .OptionalMatch("(user)-[posted:POSTED]->(post:Post)")
+                .OptionalMatch("(user)-[:HAS_PROFILEPICTURE]->(picture:Picture)")
+                .OptionalMatch("(user)-[followed:FOLLOW]->(user2:User)")
+                .OptionalMatch("(user2)-[follower:FOLLOW]->(user)")
+                .With("user, picture, count(posted) as numOfPosts, count(followed) as numOfFollowed, count(follower) as numOfFollowers")
+                .Return((user, numOfPosts, numOfFollowed, numOfFollowers, picture) => new User
+                {
+                    aspid = user.As<User>().aspid,
+                    username = user.As<User>().username,
+                    numberoffollowed = numOfFollowed.As<int>(),
+                    numberoffollowers = numOfFollowers.As<int>(),
+                    numberofposts = numOfPosts.As<int>(),
+                    profilepictureurl = picture.As<Picture>().url
+                })
+                .Results;
+
+            return queryUser.FirstOrDefault();
+        }
+
+        // Return all posts and their data and if username is passed it will return all posts of that user
+        public IEnumerable<Post> GetAllPosts(int skip, string username = null)
+        {
+            if(username != null)
+            {
+                // Getting all posts of user with all its comments, hashtags, number of likes, dislikes, picture url and time its created
+                var queryPosts = client.Cypher
+                    .Match("(user:User)-[r:POSTED]->(p:Post)")
+                    .Where((User user) => user.username == username)
+                    .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
+                    .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
+                    .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
+                    .OptionalMatch("(user)-[like:LIKED]->(p)")
+                    .OptionalMatch("(user)-[dislike:DISLIKED]->(p)")
+                    .With("p, user, r, picture, hashtag, comment, count(like) as likes, count(dislike) as dislikes")
+                    .ReturnDistinct((p, r, user, picture, likes, dislikes, hashtag, comment) => new Post
+                    {
+                        id = p.As<Post>().id,
+                        timeCreated = r.As<Posted>().time,
+                        creator = user.As<User>(),
+                        content = p.As<Post>().content,
+                        pictureurl = picture.As<Picture>().url,
+                        dislikes = dislikes.As<int>(),
+                        likes = likes.As<int>(),
+                        hashtags = hashtag.CollectAs<Hashtag>(),
+                        comments = comment.CollectAs<Comment>()
+                    })
+                    .OrderBy("r.time DESC")
+                    .Skip(skip)
+                    .Limit(10)
+                    .Results;
+
+                return queryPosts;
+            }
+            else
+            {
+                // Getting all posts with all its comments, hashtags, number of likes, dislikes, picture url and time its created
+                var queryPosts = client.Cypher
+                    .Match("(user:User)-[r:POSTED]->(p:Post)")
+                    .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
+                    .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
+                    .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
+                    .OptionalMatch("(user)-[like:LIKED]->(p)")
+                    .OptionalMatch("(user)-[dislike:DISLIKED]->(p)")
+                    .OptionalMatch("(p)-[:TAGGED]->(user2:User)")
+                    .With("p, user, r, picture, hashtag, user2.username as taggedusers, comment, count(like) as likes, count(dislike) as dislikes")
+                    .ReturnDistinct((p, r, user, picture, likes, dislikes, hashtag, comment, taggedusers) => new Post
+                    {
+                        id = p.As<Post>().id,
+                        timeCreated = r.As<Posted>().time,
+                        creator = user.As<User>(),
+                        content = p.As<Post>().content,
+                        pictureurl = picture.As<Picture>().url,
+                        dislikes = dislikes.As<int>(),
+                        likes = likes.As<int>(),
+                        hashtags = hashtag.CollectAs<Hashtag>(),
+                        comments = comment.CollectAs<Comment>(),
+                        taggedusers = taggedusers.CollectAs<string>()
+                    })
+                    .OrderBy("r.time DESC")
+                    .Skip(skip)
+                    .Limit(10)
+                    .Results;
+
+                return queryPosts;
+            }
+        }
+
+        // Returns post by id
+        public Post GetPost(string id)
         {
             // Getting all posts with all its comments, hashtags, number of likes, dislikes, picture url and time its created
             var queryPosts = client.Cypher
                 .Match("(user:User)-[r:POSTED]->(p:Post)")
+                .Where((Post p) => p.id.ToString() == id)
                 .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
                 .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
                 .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
@@ -300,81 +415,91 @@ namespace Databases.Neo4j
                 })
                 .Results;
 
-            return queryPosts;
+            return queryPosts.FirstOrDefault();
         }
 
-        // Returns user by username (without more data)
-        public User GetUser(string username)
+        // Returns all comments of post
+        public IEnumerable<Comment> GetPostComments(string id)
         {
-            var queryUser = client.Cypher
-                .Match("(user:User)", "(post:Post)", "(user2:User)")
-                .Where((User user) => user.username == username)
-                .OptionalMatch("(user)-[:HAS_PROFILEPICTURE]->(picture:Picture)")
-                .With("user, picture, size((user)-[:POSTED]->(post)) as numOfPosts, size((user)-[:FOLLOW]->(user2)) as numOfFollowed, size((user2)-[:FOLLOW]->(user)) as numOfFollowers")
-                .Return((user, numOfPosts, numOfFollowed, numOfFollowers, picture) => new User
+            var query = client.Cypher
+                .Match("(post:Post)-[hascomment:HAS_COMMENT]->(comment:Comment)")
+                .Where((Post post) => post.id == new Guid(id))
+                .OptionalMatch("(user:User)-[:COMMENTED]->(comment)")
+                .With("comment, user, hascomment")
+                .ReturnDistinct((comment, user, hascomment) => new Comment
                 {
-                    aspid = user.As<User>().aspid,
-                    username = user.As<User>().username,
-                    numberoffollowed = numOfFollowed.As<int>(),
-                    numberoffollowers = numOfFollowers.As<int>(),
-                    numberofposts = numOfPosts.As<int>(),
-                    profilepictureurl = picture.As<Picture>().url
+                    id = comment.As<Comment>().id,
+                    creator = user.As<User>(),
+                    text = comment.As<Comment>().text,
+                    time = hascomment.As<HasComment>().time
                 })
+                .OrderBy("hascomment.time ASC")
                 .Results;
 
-            return queryUser.FirstOrDefault();
+            return query;
         }
 
-        // Returns post by id
-        public Post GetPost(int id)
+        // Returns all hashtags of user
+        public IEnumerable<Hashtag> GetUserHashtags(string username)
         {
-            return null;
-        }
+            var query = client.Cypher
+                .Match("(user:User)-[posted:POSTED]->(post:Post)-[hashashtag:HAS_HASHTAG]->(hashtag:Hashtag)")
+                .Where((User user) => user.username == username)
+                .Return<Hashtag>("hashtag")
+                .Results;
 
-        // Returns all posts of user
-        public List<Post> GetUserPosts(string username)
-        {
-
-            Dictionary<string, object> queryDict = new Dictionary<string, object>();
-            queryDict.Add("username", username);
-
-            var query = new Neo4jClient.Cypher.CypherQuery("start n=node(*) match (n)-[r:POSTED]->(m) where exists(n.username) and n.username =~ {username} return m",
-                                                            queryDict, CypherResultMode.Set);
-
-            List<Post> posts = ((IRawGraphClient)client).ExecuteGetCypherResults<Post>(query).ToList();
-
-            if (posts.Count != 0)
-                return posts;
-            else
-                return null;
+            return query;
         }
 
         #endregion
 
-        #region Help functions
 
-        // Returns last id from all nodes of specific type (not using)
-        public int GetMaxNodeId(object o)
+        #region Update functions
+
+        // Updating comment
+        public void UpdateComment(string id, string text)
         {
-            string type = o.ToString().Split('.').Last();
+            var query = client.Cypher
+                .Match("(comment:Comment)")
+                .Where((Comment comment) => comment.id == new Guid(id))
+                .Set("comment.text = {text}")
+                .WithParam("text", text);
 
-            var numberOfNodesQuery = new Neo4jClient.Cypher.CypherQuery("start n=node(*) where (n:" + type + ") return count(*)",
-                                                            new Dictionary<string, object>(), CypherResultMode.Set);
-
-            int numberOfPosts = ((IRawGraphClient)client).ExecuteGetCypherResults<int>(numberOfNodesQuery).ToList().FirstOrDefault();
-
-            if (numberOfPosts == 0)
-                return 0;
-            else
-            {
-                var query = new Neo4jClient.Cypher.CypherQuery("start n=node(*) where (n:" + type + ") and exists(n.id) return max(n.id)",
-                                                                            new Dictionary<string, object>(), CypherResultMode.Set);
-
-                int maxId = ((IRawGraphClient)client).ExecuteGetCypherResults<int>(query).ToList().FirstOrDefault();
-
-                return maxId;
-            }
+            query.ExecuteWithoutResults();
         }
+
+        #endregion
+
+
+        #region Delete functions
+
+        // Deleting comment
+        public void DeleteComment(string id)
+        {
+            var query = client.Cypher
+                .Match("(comment:Comment)")
+                .Where((Comment comment) => comment.id == new Guid(id))
+                .DetachDelete("comment");
+
+            query.ExecuteWithoutResults();
+        }
+
+        // Deleting post
+        public void DeletePost(string id)
+        {
+            var query = client.Cypher
+                .Match("(post:Post)")
+                .Where((Post post) => post.id == new Guid(id))
+                .OptionalMatch("(post)-[r:HAS_PICTURE]->(picture:Picture)")
+                .OptionalMatch("(post)-[c:HAS_COMMENT]->(comment:Comment)")
+                .DetachDelete("post, picture, comment");
+
+            query.ExecuteWithoutResults();
+        }
+        #endregion
+
+
+        #region Help functions
 
         #endregion
     }

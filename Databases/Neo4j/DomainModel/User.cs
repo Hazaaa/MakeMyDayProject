@@ -24,7 +24,7 @@ namespace Databases.Neo4j.DomainModel
 
         public User()
         {
-            profilepictureurl = "~/Resources/defaultpic.jpg";
+            profilepictureurl = "~/Resource/defaultpic.jpg";
         }
     }
 }

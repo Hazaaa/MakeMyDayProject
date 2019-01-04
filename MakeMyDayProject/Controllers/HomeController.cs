@@ -17,7 +17,10 @@ namespace MakeMyDayProject.Controllers
             {
                 Neo4jFunctions neo4j = new Neo4jFunctions();
 
-                return View(neo4j.GetAllPosts());
+                if (Request.IsAuthenticated)
+                    return View(neo4j.GetUser(User.Identity.Name));
+                else
+                    return View();
             }
             catch (Exception ex)
             {

@@ -12,6 +12,8 @@ namespace Databases.Neo4j.DomainModel
         public Guid id { get; set; }
         public string text { get; set; }
 
+        public User creator { get; set; }
+        public string time { get; set; }
 
         public Comment()
         {

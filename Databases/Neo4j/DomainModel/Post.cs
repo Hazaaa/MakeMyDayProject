@@ -13,12 +13,15 @@ namespace Databases.Neo4j.DomainModel
         public string content { get; set; }
 
         public int likes { get; set; }
+        public IEnumerable<string> wholiked { get; set; }
         public int dislikes { get; set; }
+        public IEnumerable<string> whodisliked { get; set; }
         public IEnumerable<Comment> comments { get; set; }
         public string pictureurl { get; set; }
         public IEnumerable<Hashtag> hashtags { get; set; }
         public string timeCreated { get; set; }
         public User creator { get; set; }
+        public IEnumerable<string> taggedusers { get; set; }
 
         public Post()
         {

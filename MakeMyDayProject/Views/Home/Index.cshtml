@@ -1,39 +1,62 @@
-﻿@model  List<Databases.Neo4j.DomainModel.Post>
+﻿@model  Databases.Neo4j.DomainModel.User
 @{
     ViewBag.Title = "Home";
 }
 
 <div class="row">
-    <div class="col-4">
+    <div class="col-3 offset-1">
         @if (Request.IsAuthenticated)
         {
             <!--PROFILE DETAILS-->
-            <div class="sideProfile bg-danger" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray;">
-                <p>hahaha</p>
+            <div class="bg-danger" id="sideProfile" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray; border-radius: 7px;">
+                <div id="sideProfilePicture" style="margin-top: 10px; margin-left: 10px;">
+                    <img src="@Url.Content(Model.profilepictureurl)" id="sideProfilePictureImg" class="rounded-circle" width="60" height="60">
+                </div>
+                <div id="sideUsernameLink" style="margin-left: 90px; margin-top: -45px;">
+                    <a href=".." style="color: white; font-size: 20px; ">@Model.username</a>  <!--ADD LINK TO USER PROFILE-->
+                </div>
+                <br />
+                <div id="sideUserInfo" style="text-align: left;">
+                    <div id="numberOfPosts" style="color:white; margin-left: 17px; width: 33%;">
+                        <span>Posts:</span>
+                        <p style="margin-left: 15px;" id="numOfPostsP">@Model.numberofposts</p>
+                    </div>
+
+                    <div id="numberOfFollowers" style="color: white; margin-left: 80px; margin-top: -64px;">
+                        <span>Followers:</span>
+                        <p  style="margin-left: 30px;">@Model.numberoffollowers</p>
+                    </div>
+
+                    <div id="numberOfFollowed" style="color: white; margin-left: 170px; margin-top: -64px;">
+                        <span>Followed:</span>
+                        <p style="margin-left: 30px;">@Model.numberoffollowed</p>
+                    </div>
+                </div>
             </div>
 
             <!--RECOMMENDED HASHTAGS FOR LOGGED USER-->
-            <div class="sideHashtags bg-danger" style="margin-bottom: 10px; margin-top: 10px; border: 0.3px solid gray;">
-                <p>buahahah</p>
+            <div class="" id="sideUserHashtags" style="margin-bottom: 10px; margin-top: 10px; border: 0.3px solid gray; border: none;">
+                <p style="color: #dc3545; margin-left: 55px; margin-bottom: 0px;" id="hashtagText">Hashtags for you:</p>
+                <ul class="list-group align-items-center" id="sideUserHashtagsUl">
+                </ul>
             </div>
         }
         else
         {
             <!--TRANDING HASHTAGS-->
-            <div class="hashtags bg-danger" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray ;">
+            <div class="bg-danger" id="hashtags" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray ;">
                 <p>buahahah</p>
             </div>
         }
     </div>
     <div class="col-8" style="margin-bottom: 10px; margin-top: 20px;" id="postContainter">
-
         @if (Request.IsAuthenticated)
         {
             <!--TEXTBOX FOR POSTING-->
             <div class="card border-danger" style="width: 32rem; text-align: left; margin-bottom: 10px;">
                 <div class="card-body">
                     <div class="profile-picture col-12">
-                        <img src="https://www.gettyimages.com/gi-resources/images/CreativeLandingPage/HP_Sept_24_2018/CR3_GettyImages-159018836.jpg" id="newPostPicture" class="rounded-circle">
+                        <img src="@Url.Content(Model.profilepictureurl)" id="newPostPicture" class="rounded-circle">
                         <textarea title="Write # to add hashtag." form="newPostForm" rows="2" cols="20" id="newPost" class="newPostArea" placeholder="Say something funny..."></textarea>
                     </div>
                     <form id="newPostForm">
@@ -47,71 +70,24 @@
                 </div>
             </div>
         }
-
-
-        @if (Model != null)
-        {
-            <!--POSTS-->
-            for (int i = 0; i < Model.Count(); i++)
-            {
-                <div class="card border-danger" style="width: 32rem; text-align: left; margin-bottom: 10px;">
-                    <div class="card-header bg-danger" style="text-align: left;">
-                        <div class="profile-picture">
-                            <img src="~/Resource/defaultpic.jpg" width="50" height="50" class="rounded-circle" style="border: 0.5px solid gray;">
-                            <span class="username" style="padding-left: 15px; font-family: 'Franklin Gothic Medium'; font-size: 20px; color: white;">@Model[i].creator.username</span>
-                            <span class="timeposted" style="font-family: 'Franklin Gothic Medium'; font-size: 10px; color: lightgray">   - @Model[i].timeCreated</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-text">@Model[i].content</p>
-                    </div>
-                    <img class="card-img-bottom" src="..." alt="Card image cap">
-
-                    @if (Request.IsAuthenticated)
-                    {
-                        <div class="card-footer bg-transparent border-danger">
-                            <div class="row">
-                                <div class="btn-group btn-group-sm btn-group-toggle offset-4" data-toggle="buttons">
-                                    <label class="btn btn-danger active">
-                                        <input type="radio" name="options" id="like" autocomplete="off" checked> <i class="fas fa-thumbs-up"></i> Like (@Model[i].likes)
-                                    </label>
-                                    <label class="btn btn-danger">
-                                        <input type="radio" name="options" id="dislike" autocomplete="off"> <i class="fas fa-thumbs-down"></i> Dislike (@Model[i].dislikes)
-                                    </label>
-                                </div>
-                            </div>
-                            <hr />
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="card-footer bg-transparent border-danger">
-                            <div class="row">
-                                <div class="btn-group btn-group-sm btn-group-toggle offset-4" data-toggle="buttons">
-                                    <label class="btn btn-danger disabled">
-                                        <input type="radio" name="options" id="like" autocomplete="off"> <i class="fas fa-thumbs-up"></i> Like (@Model[i].likes)
-                                    </label>
-                                    <label class="btn btn-danger disabled">
-                                        <input type="radio" name="options" id="dislike" autocomplete="off"> <i class="fas fa-thumbs-down"></i> Dislike (@Model[i].dislikes)
-                                    </label>
-                                </div>
-                            </div>
-                            <hr />
-                            <div class="row">
-
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-        }
-
+    </div>
+    <div id="loadMoreButtonContainer" class="offset-6">
+        <button type="button" class="btn btn-danger" style="margin-left: 35px" id="loadMoreButton">Load More</button>
     </div>
 </div>
 
 @section Scripts {
     <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
     <script type="text/javascript">
-        GetPosts(@Request.IsAuthenticated.ToString().ToLower());
+        GetLatestPosts(@Request.IsAuthenticated.ToString().ToLower(), "@User.Identity.Name");
+        GetUserHashtags("@User.Identity.Name");
+
+        function GetLoggedUsername() {
+            return "@User.Identity.Name";
+        }
+
+        function IsLoggedin() {
+            return @Request.IsAuthenticated.ToString().ToLower();
+        }
     </script>
 }
