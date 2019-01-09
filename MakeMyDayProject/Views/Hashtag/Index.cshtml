@@ -1,0 +1,54 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="row">
+    <div class="col-3 offset-1">
+        <p style="color:#dc3545; margin-left:  80px; margin-top: 10px; font-size: 30px; ">#@ViewBag.hashtag</p>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <!--RECOMMENDED HASHTAGS FOR LOGGED USER-->
+            <div class="" id="sideUserHashtags" style="margin-bottom: 10px; margin-top: 10px; border: 0.3px solid gray; border: none;">
+                <p style="color: #dc3545; margin-left: 55px; margin-bottom: 0px;" id="hashtagText">Hashtags for you:</p>
+                <ul class="list-group align-items-center" id="sideUserHashtagsUl"></ul>
+            </div>
+        }
+        else
+        {
+            <!--TRANDING HASHTAGS-->
+            <div class="" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray ;  border: none;">
+                <p style="color: #dc3545; margin-left: 55px; margin-bottom: 0px;" id="allHashtagText">Popular hashtags:</p>
+                <ul class="list-group align-items-center" id="hashtagsUl"></ul>
+            </div>
+        }
+    </div>
+    <div class="col-8" style="margin-bottom: 10px; margin-top: 20px;" id="postContainter">
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
+    <script type="text/javascript">
+
+        GetPostsWithHashtag("@ViewBag.hashtag");
+
+        if (@User.Identity.IsAuthenticated.ToString().ToLower() === true) {
+            GetUserHashtags("@User.Identity.Name");
+        }
+        else {
+            GetHashtags();
+        }
+
+        function GetIfLogged() {
+            if (@User.Identity.IsAuthenticated.ToString().ToLower() === true)
+                return true;
+            else
+                return false;
+        }
+
+        function GetLoggedUsername() {
+            return "@User.Identity.Name";
+        }
+    </script>
+}
+

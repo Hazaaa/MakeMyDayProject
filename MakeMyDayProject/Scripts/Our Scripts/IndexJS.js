@@ -91,7 +91,11 @@ function GeneratePostBody(post, loggedin, newPost, username) {
     profilePictureDiv.className = "profile-picture";
 
     var picture = document.createElement("img");
-    picture.src = post.creator.profilepictureurl.replace(/~/g, "");
+    if (newPost === true)
+        picture.src = post.creator.profilepictureurl.replace(/~/g, "");
+    else
+        picture.src = post.creatorPict.replace(/~/g, "");
+    
     picture.width = "50";
     picture.height = "50";
     picture.className = "rounded-circle";
@@ -105,7 +109,7 @@ function GeneratePostBody(post, loggedin, newPost, username) {
     usernameSpan.style.color = "white";
 
     var linkToUser = document.createElement("a");
-    linkToUser.href = '../Manage';          // NEED TO POINTS TO USER PROFILE TODO!!!!!!!!!
+    linkToUser.href = '/Profile/' + post.creator.username;
     linkToUser.style.color = "white";
     linkToUser.innerHTML = post.creator.username;
 
@@ -150,7 +154,7 @@ function GeneratePostBody(post, loggedin, newPost, username) {
     // Content text
     var content = document.createElement("p");
     content.className = "card-text";
-    content.innerHTML = ReplaceHashtagsAndTags(post.content); // <a> NEED TO REDIRECT TO HASHTAGS PAGE OR TO USER PROFILE TODO!!!!!!!!!!
+    content.innerHTML = ReplaceHashtagsAndTags(post.content);
 
     // Appending to card body
     bodyDiv.appendChild(content);
@@ -184,7 +188,6 @@ function GeneratePostBody(post, loggedin, newPost, username) {
     likeButton.type = "button";
     likeButton.id = "like-" + post.id;
     likeButton.className = "btn btn-danger";
-    //likeButton.checked = "";          // NEED TO ADD CHECK IF USER IS LIKED OR DISLIKED POST
 
     if (loggedin === true) {
         likeButton.onclick = function () {
@@ -201,7 +204,6 @@ function GeneratePostBody(post, loggedin, newPost, username) {
     dislikeButton.type = "button";
     dislikeButton.id = "dislike-" + post.id;
     dislikeButton.className = "btn btn-danger";
-    //dislikeButton.checked = "";          // NEED TO ADD CHECK IF USER IS LIKED OR DISLIKED POST
 
     if (loggedin === true) {
         dislikeButton.onclick = function () {
@@ -296,9 +298,7 @@ function LikeDislikePost(postId, choice) {
 
 // Uploads post to db
 function UploadPost() {
-
     var postText = document.getElementById("newPost");
-
     if (postText.value === "")
         return;
 
@@ -306,7 +306,7 @@ function UploadPost() {
 
     var hashTagsAndTags = ValidationForHashtagAndTag(postText.value);
 
-    var uploadedPicture = $('input[type=file]')[0].files[0];
+    var uploadedPicture = document.getElementById("file-upload").files[0];
 
     formData.append("uploadedPicture", uploadedPicture);
 
@@ -388,14 +388,14 @@ function ReplaceHashtagsAndTags(text) {
     // Replacing hashtags with link to hashtag page with all posts that contains that hashtag
     if (hashtagsAndTags.Hashtags.length != 0) {
         for (var i = 0; i < hashtagsAndTags.Hashtags.length; i++) {
-            tempContent = tempContent.replace(hashtagsAndTags.Hashtags[i], " <a href='..'>" + hashtagsAndTags.Hashtags[i] + "</a> ");
+            tempContent = tempContent.replace(hashtagsAndTags.Hashtags[i], " <a href='../hashtag/" + hashtagsAndTags.Hashtags[i].replace(/#/g, "") + "'>" + hashtagsAndTags.Hashtags[i] + "</a> ");
         }
     }
 
     // Replacing tags with link to user profile that is tagged
     if (hashtagsAndTags.Tags.length != 0) {
         for (var i = 0; i < hashtagsAndTags.Tags.length; i++) {
-            tempContent = tempContent.replace(hashtagsAndTags.Tags[i], " <a href='..'>" + hashtagsAndTags.Tags[i] + "</a> ");
+            tempContent = tempContent.replace(hashtagsAndTags.Tags[i], " <a href='../profile/" + hashtagsAndTags.Tags[i].replace(/@/g, "") + "'>" + hashtagsAndTags.Tags[i] + "</a> ");
         }
     }
 
@@ -462,7 +462,7 @@ function CreateCommentBody(postId, comment, username, commentsMainUl, newComment
     usernameSpan.style.color = "white";
 
     var linkToUser = document.createElement("a");
-    linkToUser.href = '../Manage';          // NEED TO POINTS TO USER PROFILE TODO!!!!!!!!!
+    linkToUser.href = '/Profile/' + comment.creator.username;
     linkToUser.style.color = "#dc3545";
     linkToUser.innerHTML = comment.creator.username;
 
@@ -699,8 +699,7 @@ function DeletePost(postId) {
 }
 
 // Get users hashtags
-function GetUserHashtags(username) {
-    console.log(username);
+function GetUserHashtags(username){
 
     $.ajax({
         type: "GET",
@@ -708,7 +707,7 @@ function GetUserHashtags(username) {
         success: function (data) {
             if (data !== null && data.length != 0) {
                 for (var i = 0; i < data.length; i++) {
-                    AddUserHastag(data[i]);
+                    AddUserHastag(data[i], "sideUserHashtagsUl");
                 }
             }
             else {
@@ -722,21 +721,365 @@ function GetUserHashtags(username) {
     });
 }
 
+// Get all hashtags
+function GetHashtags() {
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-hashtags',
+        success: function (data) {
+            if (data !== null && data.length != 0) {
+                for (var i = 0; i < data.length; i++) {
+                    AddUserHastag(data[i], "hashtagsUl");
+                }
+            }
+            else {
+                var allHashtagText = document.getElementById("allHashtagText");
+                allHashtagText.innerHTML = "No hashtags :(";
+            }
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
+
 // Add hashtags to user hashtags list
-function AddUserHastag(hashtag) {
-    var mainHashtagUl = document.getElementById("sideUserHashtagsUl");
+function AddUserHastag(hashtag, containerUl) {
+    var mainHashtagUl = document.getElementById(containerUl);
 
     var hashtagLink = document.createElement("a");
-    hashtagLink.href = ".."; // ADD HREF TO ALL POSTS WITH THIS HASHTAG
+    hashtagLink.href = "../hashtag/" + hashtag.text.replace(/#/g, "");
     hashtagLink.className = "list-group-item list-group-item-action list-group-item-danger";
     hashtagLink.innerHTML = hashtag.text;
 
     mainHashtagUl.appendChild(hashtagLink);
 }
 
+
+////////////////////////////////////////////////////////////
+///////////////PROFILE PART////////////////////////////////
+///////////////////////////////////////////////////////////
+
+// Get posts for user profile
+function GetPostsForProfile() {
+    var username = GetProfileUsername();
+    var loggedInUsername = GetLoggedUsername();
+
+    var data = { 'username': username, 'skip': 0 };
+
+    // Getting user posts async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-user-posts',
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        data: data,
+        success: function (data) {
+            if (data != null) {
+                for (var i = 0; i < data.length; i++) {
+                    GeneratePostBody(data[i], true, false, loggedInUsername);
+
+                }
+            }
+            else
+                alert("Error while trying to get user posts :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
+
+// Load more users posts
+function LoadMoreUserPosts() {
+    var user = GetLoggedUsername();
+    var profileUsername = GetProfileUsername();
+    var loadMoreUserButton = document.getElementById("loadMoreUserButton");
+
+    var data = { 'username': profileUsername, 'skip': numberOfShownPosts };
+    // Getting posts async
+    $.ajax({
+        type: "GET",
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        data: data,
+        url: 'http://localhost:60321/api/get-user-posts',
+        success: function (data) {
+            if (data != null) {
+                for (var i = 0; i < data.length; i++) {
+                    GeneratePostBody(data[i], true, false, user);
+                }
+                if (data.length !== 10) {
+                    loadMoreUserButton.style.visibility = "hidden";
+                }
+                else {
+                    loadMoreUserButton.style.visibility = "visible";
+                }
+                numberOfShownPosts += 10;
+            }
+            else {
+                alert("Error while trying to load more user posts :(");
+            }
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
+
+// Get latest activities
+function GetLatestActivities() {
+    // Getting user activities async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-user-activities/' + GetLoggedUsername(),
+        success: function (data) {
+            if (data != null) {
+                if (data.length != 0) {
+                    for (var i = 0; i < data.length; i++) {
+                        AddLatestActivity(data[i]);
+                    }
+                }
+                else {
+                    var textActivity = document.getElementById("activitiesText");
+
+                    textActivity.innerHTML = "No recent activities...";
+                }
+            }
+            else
+                alert("Error while trying to get user posts :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
+
+// Add activity to activities list
+function AddLatestActivity(data) {
+    var mainActivityUl = document.getElementById("sideLatestActivities");
+
+    var activity = document.createElement("li");
+    activity.className = "list-group-item list-group-item-info";
+    activity.innerHTML = data;
+
+    mainActivityUl.appendChild(activity);
+}
+
+// Following another user
+function FollowUser() {
+    var toFollow = GetProfileUsername();
+
+    $.ajax({
+        type: "POST",
+        url: '/api/follow-user',
+        data: { 'userToFollow': toFollow },
+        success: function (data) {
+            if (data === "OK") {
+                var followButton = document.getElementById("followButton");
+                followButton.innerHTML = "Unfollow";
+                followButton.onclick = function () {
+                    UnfollowUser();
+                };
+
+                var numOfFollowers = document.getElementById("numOfFollowersProfile");
+                var num = parseInt(numOfFollowers.innerHTML);
+                numOfFollowers.innerHTML = ++num;
+            }
+            else {
+                alert("Error while uploading comment :(");
+            }
+        }
+    });
+}
+
+// Unfollowing another user
+function UnfollowUser() {
+    var toUnfollow = GetProfileUsername();
+
+    $.ajax({
+        type: "POST",
+        url: '/api/unfollow-user',
+        data: { 'userToUnfollow': toUnfollow },
+        success: function (data) {
+            if (data === "OK") {
+                var followButton = document.getElementById("followButton");
+                followButton.innerHTML = "Follow";
+                followButton.onclick = function () {
+                    FollowUser();
+                };
+
+                var numOfFollowers = document.getElementById("numOfFollowersProfile");
+                var num = parseInt(numOfFollowers.innerHTML);
+                numOfFollowers.innerHTML = --num;
+            }
+            else {
+                alert("Error while uploading comment :(");
+            }
+        }
+    });
+}
+
+// Uploading profile picture
+function UploadProfilePicture() {
+    var formData = new FormData();
+
+    var uploadedPicture = document.getElementById("profilePictureChange");
+
+    if (uploadedPicture.files[0] === null || uploadedPicture.files[0] === undefined)
+        return;
+
+    formData.append("uploadedPicture", uploadedPicture.files[0]);
+
+    $.ajax({
+        type: "POST",
+        url: '/api/upload-profile-picture',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function (data) {
+            if (data === "OK") {
+                window.location.href = "../Profile/" + GetLoggedUsername();
+            }
+            else {
+                alert("Error while trying to upload  :(");
+            }
+        }
+    });
+}
+
+////////////////////////////////////////////////////////////
+///////////////HASHTAG PART////////////////////////////////
+///////////////////////////////////////////////////////////
+
+// Getting posts with hashtag in its content
+function GetPostsWithHashtag(hashtag) {
+    // Getting posts async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-posts-with-hashtag/' + hashtag,
+        success: function (data) {
+            if (data != null) {
+                if (data.length != 0) {
+                    for (var i = 0; i < data.length; i++) {
+                        GeneratePostBody(data[i], GetIfLogged(), false, GetLoggedUsername());
+                    }
+                }
+                else {
+                    var textActivity = document.getElementById("postContainter");
+
+                    textActivity.innerHTML = "No posts with that hashtag...";
+                    textActivity.style.color = "#dc3545";
+                }
+            }
+            else
+                alert("Error while trying to get posts :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
+
+////////////////////////////////////////////////////////////
+///////////////TOPRATED PART////////////////////////////////
+///////////////////////////////////////////////////////////
+
+// Getting top rated posts
+function GetTopRatedPosts() {
+    // Getting posts async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-top-rated-posts',
+        success: function (data) {
+            if (data != null) {
+                if (data.length != 0) {
+                    for (var i = 0; i < data.length; i++) {
+                        GeneratePostBody(data[i], GetIfLogged(), false, GetLoggedUsername());
+                    }
+                }
+                else {
+                    var textActivity = document.getElementById("postContainter");
+
+                    textActivity.innerHTML = "No posts to order...";
+                    textActivity.style.color = "#dc3545";
+                }
+            }
+            else
+                alert("Error while trying to get posts :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
+
+// Array that will store all usernames
+var usernames = [];
+
+function InitializeSearchInput() {
+    // Getting usernames async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-all-users',
+        success: function (data) {
+            if (data != null) {
+                usernames = data;
+            }
+            else
+                alert("Error while trying to search for user :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+
+    // Setting on key down event to input
+    var input = document.getElementById("inputForUserSearch");
+
+    input.onkeydown = function () {
+        var entered = input.value;
+
+        if (entered === "")
+            return;
+
+        var found = [];
+
+        var datalist = document.getElementById("usersForSearch");
+        datalist.innerHTML = "";
+
+        usernames.forEach(function (username) {
+            if (username.includes(entered) === true) {
+                var element = document.createElement("option");
+                element.value = username;
+
+                datalist.appendChild(element);
+            }
+        });
+    }
+
+    var button = document.getElementById("searchButton");
+
+    button.onclick = function () {
+
+        if (input.value === "")
+            return;
+
+        window.location.href = "../Profile/" + input.value;
+    };
+}
+
 // jQuery part
 $(document).ready(function () {
 
+    InitializeSearchInput();
+
+    // HOME PART
     $("#uploadButton").click(UploadPost);
     $("#loadMoreButton").click(LoadMorePosts);
+
+
+    // PROFILE PART
+    $("#loadMoreUserButton").click(LoadMoreUserPosts);
+    $("#profilePictureChange").change(UploadProfilePicture);
 });

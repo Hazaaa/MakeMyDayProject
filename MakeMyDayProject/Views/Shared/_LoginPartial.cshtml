@@ -7,7 +7,7 @@
 
     <ul class="nav navbar-nav navbar-right">
         <li>
-            @Html.ActionLink("Hello " + User.Identity.GetUserName() + ".", "Index", "Manage", routeValues: null, htmlAttributes: new { title = "Manage", style = "padding: 20px; color:white;" })
+            <a href="../Profile/@User.Identity.GetUserName()" style="color: white; margin-right: 20px; margin-left: 10px;"><i class="fas fa-hand-peace"></i> Hello @User.Identity.GetUserName()</a>
         </li>
         <li><a href="javascript:document.getElementById('logoutForm').submit()" class="text-white"><i class="fas fa-sign-out-alt"></i>Log out</a></li>
     </ul>

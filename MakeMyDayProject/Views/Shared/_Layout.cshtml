@@ -38,9 +38,9 @@
                         </a>
                     </li>
                     <li class="nav-item active">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="@Url.Action("Index", "TopRated")">
                             <i class="fa fa-trophy"></i>
-                            Most Popular
+                            Top Rated
                         </a>
                     </li>
                     <li class="nav-item active">
@@ -51,8 +51,10 @@
                     </li>
                 </ul>
                 <form class="form-inline my-2 my-lg-0">
-                    <input class="form-control mr-sm-2" type="search" placeholder="Search users">
-                    <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Search</button>
+                    <input class="form-control mr-sm-2" type="text" id="inputForUserSearch" list="usersForSearch" placeholder="Search users">
+                    <datalist id="usersForSearch" name="users" >
+                    </datalist>
+                    <button class="btn btn-outline-light my-2 my-sm-0" type="button" id="searchButton">Search</button>
                 </form>
                 @Html.Partial("_LoginPartial")
             </div>

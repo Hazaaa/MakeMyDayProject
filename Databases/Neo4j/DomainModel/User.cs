@@ -11,14 +11,10 @@ namespace Databases.Neo4j.DomainModel
         public string aspid { get; set; }
         public string username { get; set; }
 
-        public int numberoffollowers { get; set; }
-        public List<User> followers { get; set; }
-
-        public int numberoffollowed { get; set; }
-        public List<User> followed { get; set; }
+        public IEnumerable<string> followers { get; set; }
+        public IEnumerable<string> followed { get; set; }
 
         public int numberofposts { get; set; }
-        public List<Post> posts { get; set; }
 
         public string profilepictureurl { get; set; }
 

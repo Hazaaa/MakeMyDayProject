@@ -13,7 +13,7 @@
                     <img src="@Url.Content(Model.profilepictureurl)" id="sideProfilePictureImg" class="rounded-circle" width="60" height="60">
                 </div>
                 <div id="sideUsernameLink" style="margin-left: 90px; margin-top: -45px;">
-                    <a href=".." style="color: white; font-size: 20px; ">@Model.username</a>  <!--ADD LINK TO USER PROFILE-->
+                    <a href="/Profile/@Model.username" style="color: white; font-size: 20px; ">@Model.username</a>
                 </div>
                 <br />
                 <div id="sideUserInfo" style="text-align: left;">
@@ -24,12 +24,12 @@
 
                     <div id="numberOfFollowers" style="color: white; margin-left: 80px; margin-top: -64px;">
                         <span>Followers:</span>
-                        <p  style="margin-left: 30px;">@Model.numberoffollowers</p>
+                        <p  style="margin-left: 30px;">@Model.followers.Count()</p>
                     </div>
 
                     <div id="numberOfFollowed" style="color: white; margin-left: 170px; margin-top: -64px;">
                         <span>Followed:</span>
-                        <p style="margin-left: 30px;">@Model.numberoffollowed</p>
+                        <p style="margin-left: 30px;">@Model.followed.Count()</p>
                     </div>
                 </div>
             </div>
@@ -44,8 +44,9 @@
         else
         {
             <!--TRANDING HASHTAGS-->
-            <div class="bg-danger" id="hashtags" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray ;">
-                <p>buahahah</p>
+            <div class="" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray ;  border: none;">
+                <p style="color: #dc3545; margin-left: 55px; margin-bottom: 0px;" id="allHashtagText">Popular hashtags:</p>
+                <ul class="list-group align-items-center" id="hashtagsUl"></ul>
             </div>
         }
     </div>
@@ -80,7 +81,13 @@
     <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
     <script type="text/javascript">
         GetLatestPosts(@Request.IsAuthenticated.ToString().ToLower(), "@User.Identity.Name");
-        GetUserHashtags("@User.Identity.Name");
+
+        if (@Request.IsAuthenticated.ToString().ToLower() === true) {
+            GetUserHashtags("@User.Identity.Name");
+        }
+        else {
+            GetHashtags();
+        }
 
         function GetLoggedUsername() {
             return "@User.Identity.Name";

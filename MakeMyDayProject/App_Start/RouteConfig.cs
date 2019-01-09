@@ -14,6 +14,18 @@ namespace MakeMyDayProject
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
             routes.MapRoute(
+                name: "Profile",
+                url: "Profile/{username}",
+                defaults: new { controller = "Profile", action = "Index", username = UrlParameter.Optional }
+            );
+
+            routes.MapRoute(
+                name: "Hashtag",
+                url: "Hashtag/{hashtag}",
+                defaults: new { controller = "Hashtag", action = "Index", hashtag = UrlParameter.Optional }
+            );
+
+            routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
                 defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }

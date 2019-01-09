@@ -24,20 +24,6 @@ namespace MakeMyDayProject.Controllers
         Neo4jFunctions neo4j = new Neo4jFunctions();
         RedisFunctions redis = new RedisFunctions();
 
-        [Route("test/{username}")]
-        [HttpGet]
-        public IEnumerable<Hashtag> Test(string username)
-        {
-            try
-            {
-                return neo4j.GetUserHashtags(username);
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-
         #region GET
 
         [Route("api/get-posts/{skip}")]
@@ -100,13 +86,13 @@ namespace MakeMyDayProject.Controllers
         }
 
 
-        [Route("api/get-user-posts/{username}")]
+        [Route("api/get-user-posts")]
         [HttpGet]
-        public IEnumerable<Post> GetAllUserPosts(string username)
+        public IEnumerable<Post> GetAllUserPosts(string username, int skip)
         {
             try
             {
-                return null;
+                return neo4j.GetAllPosts(skip, username);
             }
             catch (Exception)
             {
@@ -120,7 +106,86 @@ namespace MakeMyDayProject.Controllers
         {
             try
             {
-                return neo4j.GetUserHashtags(username);
+                return redis.GetUserHashtags(username);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [Route("api/get-hashtags")]
+        [HttpGet]
+        public IEnumerable<Hashtag> GetAllHashtags()
+        {
+            try
+            {
+                return neo4j.GetHashtags();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [Route("api/get-user-activities/{username}")]
+        [HttpGet]
+        public IEnumerable<string> GetUserActivities(string username)
+        {
+            try
+            {
+                return redis.GetUserLatestActivities(username);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [Route("api/get-posts-with-hashtag/{hashtag}")]
+        [HttpGet]
+        public IEnumerable<Post> GetPostsWithHashtag(string hashtag)
+        {
+            try
+            {
+                return neo4j.GetPostsWithHashtag(hashtag);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [Route("api/get-top-rated-posts")]
+        [HttpGet]
+        public IEnumerable<Post> GetTopRatedPosts()
+        {
+            try
+            {
+                var posts = redis.GetTopRatedPosts();
+                if (posts != null)
+                    return posts;
+                else
+                {
+                    var topPosts = neo4j.GetTopRatedPosts();
+                    redis.PushTopRatedPosts(topPosts);
+
+                    return topPosts;
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [Route("api/get-all-users")]
+        [HttpGet]
+        public IEnumerable<string> GetAllUsers()
+        {
+            try
+            {
+                return redis.GetAllUsernamesForSearch();
             }
             catch (Exception)
             {
@@ -152,18 +217,22 @@ namespace MakeMyDayProject.Controllers
                 var userName = User.Identity.GetUserName();
 
                 User creator = neo4j.GetUser(userName);
+                redisLatestPost.creatorPict = creator.profilepictureurl;
 
                 Post newPost = new Post
                 {
                     content = post.Text
                 };
 
-                neo4j.CreatePostedRelationship(new Posted
+                Posted newPosted = new Posted
                 {
                     post = newPost,
                     user = creator,
                     time = DateTime.Now.ToString()
-                });
+                };
+
+                neo4j.CreatePostedRelationship(newPosted);
+                redis.PushLatestActivity(userName, "You added new post.");
 
                 // Setting properties for redis post
                 redisLatestPost.id = newPost.id;
@@ -211,6 +280,8 @@ namespace MakeMyDayProject.Controllers
                             post = newPost,
                             time = DateTime.Now.ToString()
                         });
+
+                        redis.PushUserHashtag(userName, newHashtag);
                     }
                 }
 
@@ -252,6 +323,8 @@ namespace MakeMyDayProject.Controllers
                 User user = new User { username = User.Identity.GetUserName() };
                 Comment newComment = new Comment { text = comment.text, creator = user, time = DateTime.Now.ToString() };
 
+                redis.PushLatestActivity(user.username, "You commented post: " + comment.postId); 
+
                 if (neo4j.CreateCommentRelationships(new HasComment
                 {
                     comment = newComment,
@@ -286,6 +359,8 @@ namespace MakeMyDayProject.Controllers
                 Post likedPost = new Post { id = new Guid(postId) };
                 User liker = new User { username = user };
 
+                redis.PushLatestActivity(user, "You liked post: " + postId);
+
                 neo4j.CreateLikedDislikedRelationship(new Databases.Neo4j.DomainModel.Relationships.Liked
                 {
                     post = likedPost,
@@ -313,12 +388,83 @@ namespace MakeMyDayProject.Controllers
                 Post dislikedPost = new Post { id = new Guid(postId) };
                 User disliker = new User { username = user };
 
+                redis.PushLatestActivity(user, "You disliked post: " + postId);
+
                 neo4j.CreateLikedDislikedRelationship(null, new Databases.Neo4j.DomainModel.Relationships.Disliked
                 {
                     post = dislikedPost,
                     time = DateTime.Now.ToString(),
                     user = disliker
                 });
+
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        [Route("api/follow-user")]
+        [HttpPost]
+        public string FollowUser()
+        {
+            try
+            {
+                var userToFollow = HttpContext.Current.Request["userToFollow"];
+
+                neo4j.CreateFollowRelationship(new Databases.Neo4j.DomainModel.Relationships.Follow
+                {
+                    followed = new User { username = userToFollow },
+                    follower = new User { username = User.Identity.Name},
+                    time = DateTime.Now.ToString()
+                });
+                redis.PushLatestActivity(User.Identity.Name, "You are following " + userToFollow + ".");
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        [Route("api/unfollow-user")]
+        [HttpPost]
+        public string UnfollowUser()
+        {
+            try
+            {
+                var userToUnfollow = HttpContext.Current.Request["userToUnfollow"];
+
+                neo4j.DeleteFollowRelationship(User.Identity.Name, userToUnfollow);
+
+                redis.PushLatestActivity(User.Identity.Name,"You unfollowed " + userToUnfollow + ".");
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        [Route("api/upload-profile-picture")]
+        [HttpPost]
+        public string UploadProfilePicture()
+        {
+            try
+            {
+                HttpPostedFile uploadedPicture = HttpContext.Current.Request.Files["uploadedPicture"];
+
+                var username = User.Identity.Name;
+
+                var fileSavePath = Path.Combine(HttpContext.Current.Server.MapPath("~/Resource/UploadedPictures"), "profilepic-" + username + "." + uploadedPicture.FileName.Split('.')[1]);
+
+                // Saving picture to "server"
+                uploadedPicture.SaveAs(fileSavePath);
+
+                neo4j.UpdateProfilePicture(username, "~/Resource/UploadedPictures/profilepic-" + username + "." + uploadedPicture.FileName.Split('.')[1]);
+
+                redis.PushLatestActivity(username, "You've changed your profile picture.");
 
                 return "OK";
             }
@@ -358,6 +504,8 @@ namespace MakeMyDayProject.Controllers
             try
             {
                 neo4j.DeleteComment(id);
+
+                redis.PushLatestActivity(User.Identity.Name, "You deleted your comment: " + id);
                 return "OK";
             }
             catch (Exception ex)
@@ -374,6 +522,8 @@ namespace MakeMyDayProject.Controllers
             {
                 redis.DeletePost(id);
                 neo4j.DeletePost(id);
+
+                redis.PushLatestActivity(User.Identity.Name, "You deleted your post: " + id);
                 return "OK";
             }
             catch (Exception ex)

@@ -14,6 +14,7 @@ namespace Databases.Redis
 
         readonly RedisClient redis = new RedisClient(RedisConfig.SingleHost);
 
+        // Clears redis db
         public bool RemoveAll()
         {
             redis.FlushAll();
@@ -64,6 +65,100 @@ namespace Databases.Redis
                 return false;
             else
                 return true;
+        }
+
+        // Saving hashtag that user used
+        public void PushUserHashtag(string username, Hashtag newHashtag)
+        {
+            // Adding hashtag that user used to list and it will be unique for every user
+            redis.EnqueueItemOnList("user:" + username + ":hashtags", JsonSerializer.SerializeToString<Hashtag>(newHashtag));
+
+            // List will only save last 10 used hashtags
+            redis.TrimList("user:" + username + ":hashtags", 0, 9);
+        }
+
+        // Getting users hashtags
+        public List<Hashtag> GetUserHashtags(string username)
+        {
+            List<Hashtag> hashtags = new List<Hashtag>();
+
+            foreach(string jsonstring in redis.GetAllItemsFromList("user:" + username + ":hashtags"))
+            {
+                Hashtag h = (Hashtag)JsonSerializer.DeserializeFromString(jsonstring, typeof(Hashtag));
+
+                hashtags.Add(h);
+            }
+
+            return hashtags;
+        }
+
+        // Saving latest activities of user
+        public void PushLatestActivity(string username, string activity)
+        {
+            // Adding latest activities to user list in redis
+            //redis.EnqueueItemOnList("user:" + username + ":latestactivities", JsonSerializer.SerializeToString(activity, activity.GetType()));
+
+            redis.EnqueueItemOnList("user:" + username + ":latestactivities", activity);
+
+            // List will only save last 10 acitvities
+            redis.TrimList("user:" + username + ":latestactivities", 0, 9);
+        }
+
+        // Getting user latest activities
+        public List<string> GetUserLatestActivities(string username)
+        {
+            List<string> activities = new List<string>();
+
+            foreach (string activity in redis.GetAllItemsFromList("user:" + username + ":latestactivities"))
+            {
+                activities.Add(activity);
+            }
+
+            return activities;
+        }
+
+        // Saving top rated posts
+        public void PushTopRatedPosts(IEnumerable<Post> posts)
+        {
+            foreach (var post in posts)
+            {
+                redis.AddItemToList("topratedposts", JsonSerializer.SerializeToString(post, typeof(Post)));
+            }
+
+            // List will expire every 60min so data is always up to date
+            redis.Expire("topratedposts", 60);
+        }
+
+        // Getting top rated posts
+        public List<Post> GetTopRatedPosts()
+        {
+            if (redis.Exists("topratedposts") == 1)
+            {
+                List<Post> topRatedPosts = new List<Post>();
+
+                foreach (string post in redis.GetAllItemsFromList("topratedposts"))
+                {
+                    Post p = (Post)JsonSerializer.DeserializeFromString(post, typeof(Post));
+
+                    topRatedPosts.Add(p);
+                }
+
+                return topRatedPosts;
+            }
+            else
+                return null;
+        }
+
+        // Saving username when user is registered so search is faster
+        public void PushUsernameToSearchList(string username)
+        {
+            redis.AddItemToList("usersforsearch", username);
+        }
+
+        // Getting all usernames for search
+        public List<string> GetAllUsernamesForSearch()
+        {
+            return redis.GetAllItemsFromList("usersforsearch");
         }
     }
 }

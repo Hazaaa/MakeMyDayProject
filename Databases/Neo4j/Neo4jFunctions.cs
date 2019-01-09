@@ -306,14 +306,14 @@ namespace Databases.Neo4j
                 .OptionalMatch("(user)-[posted:POSTED]->(post:Post)")
                 .OptionalMatch("(user)-[:HAS_PROFILEPICTURE]->(picture:Picture)")
                 .OptionalMatch("(user)-[followed:FOLLOW]->(user2:User)")
-                .OptionalMatch("(user2)-[follower:FOLLOW]->(user)")
-                .With("user, picture, count(posted) as numOfPosts, count(followed) as numOfFollowed, count(follower) as numOfFollowers")
-                .Return((user, numOfPosts, numOfFollowed, numOfFollowers, picture) => new User
+                .OptionalMatch("(user3:User)-[follower:FOLLOW]->(user)")
+                .With("user, picture, user2.username as userFollow, user3.username as userFollower, count(posted) as numOfPosts")
+                .Return((user, userFollow, userFollower, numOfPosts, picture) => new User
                 {
                     aspid = user.As<User>().aspid,
                     username = user.As<User>().username,
-                    numberoffollowed = numOfFollowed.As<int>(),
-                    numberoffollowers = numOfFollowers.As<int>(),
+                    followed = userFollow.CollectAs<string>(),
+                    followers = userFollower.CollectAs<string>(),
                     numberofposts = numOfPosts.As<int>(),
                     profilepictureurl = picture.As<Picture>().url
                 })
@@ -334,14 +334,16 @@ namespace Databases.Neo4j
                     .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
                     .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
                     .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
-                    .OptionalMatch("(user)-[like:LIKED]->(p)")
-                    .OptionalMatch("(user)-[dislike:DISLIKED]->(p)")
-                    .With("p, user, r, picture, hashtag, comment, count(like) as likes, count(dislike) as dislikes")
-                    .ReturnDistinct((p, r, user, picture, likes, dislikes, hashtag, comment) => new Post
+                    .OptionalMatch("(user)-[:HAS_PROFILEPICTURE]->(profile:Picture)")
+                    .OptionalMatch("(user3:User)-[like:LIKED]->(p)")
+                    .OptionalMatch("(user4:User)-[dislike:DISLIKED]->(p)")
+                    .With("p, user, r, profile, picture, hashtag, comment, count(user3) as likes, count(user4) as dislikes")
+                    .ReturnDistinct((p, r, user, profile, picture, likes, dislikes, hashtag, comment) => new Post
                     {
                         id = p.As<Post>().id,
                         timeCreated = r.As<Posted>().time,
                         creator = user.As<User>(),
+                        creatorPict = profile.As<Picture>().url,
                         content = p.As<Post>().content,
                         pictureurl = picture.As<Picture>().url,
                         dislikes = dislikes.As<int>(),
@@ -364,10 +366,10 @@ namespace Databases.Neo4j
                     .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
                     .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
                     .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
-                    .OptionalMatch("(user)-[like:LIKED]->(p)")
-                    .OptionalMatch("(user)-[dislike:DISLIKED]->(p)")
+                    .OptionalMatch("(user3:User)-[like:LIKED]->(p)")
+                    .OptionalMatch("(user4:User)-[dislike:DISLIKED]->(p)")
                     .OptionalMatch("(p)-[:TAGGED]->(user2:User)")
-                    .With("p, user, r, picture, hashtag, user2.username as taggedusers, comment, count(like) as likes, count(dislike) as dislikes")
+                    .With("p, user, r, picture, hashtag, user2.username as taggedusers, comment, count(user3) as likes, count(user4) as dislikes")
                     .ReturnDistinct((p, r, user, picture, likes, dislikes, hashtag, comment, taggedusers) => new Post
                     {
                         id = p.As<Post>().id,
@@ -439,16 +441,97 @@ namespace Databases.Neo4j
             return query;
         }
 
-        // Returns all hashtags of user
-        public IEnumerable<Hashtag> GetUserHashtags(string username)
+        // Returns all hashtags of user or 10 other hashtags
+        public IEnumerable<Hashtag> GetHashtags(string username = null)
         {
-            var query = client.Cypher
+            if(username != null)
+            {
+                var query = client.Cypher
                 .Match("(user:User)-[posted:POSTED]->(post:Post)-[hashashtag:HAS_HASHTAG]->(hashtag:Hashtag)")
                 .Where((User user) => user.username == username)
                 .Return<Hashtag>("hashtag")
                 .Results;
 
-            return query;
+                return query;
+            }
+            else
+            {
+                var query = client.Cypher
+                .Match("(hashtag:Hashtag)")
+                .Return<Hashtag>("hashtag")
+                .Limit(10)
+                .Results;
+
+                return query;
+            }
+        }
+
+        // Returns all posts that contains hashtag
+        public IEnumerable<Post> GetPostsWithHashtag(string hashtagToFind)
+        {
+            // Getting all posts with hashtag in it
+            var queryPosts = client.Cypher
+                .Match("(user:User)-[r:POSTED]->(p:Post)")
+                .Where((Post p) => p.content.Contains(hashtagToFind))
+                .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
+                .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
+                .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
+                .OptionalMatch("(user)-[like:LIKED]->(p)")
+                .OptionalMatch("(user)-[dislike:DISLIKED]->(p)")
+                .OptionalMatch("(p)-[:TAGGED]->(user2:User)")
+                .With("p, user, r, picture, hashtag, user2.username as taggedusers, comment, count(like) as likes, count(dislike) as dislikes")
+                .ReturnDistinct((p, r, user, picture, likes, dislikes, hashtag, comment, taggedusers) => new Post
+                {
+                    id = p.As<Post>().id,
+                    timeCreated = r.As<Posted>().time,
+                    creator = user.As<User>(),
+                    content = p.As<Post>().content,
+                    pictureurl = picture.As<Picture>().url,
+                    dislikes = dislikes.As<int>(),
+                    likes = likes.As<int>(),
+                    hashtags = hashtag.CollectAs<Hashtag>(),
+                    comments = comment.CollectAs<Comment>(),
+                    taggedusers = taggedusers.CollectAs<string>()
+                })
+                .OrderBy("r.time DESC")
+                .Results;
+
+            return queryPosts;
+        }
+
+        // Returns top 10 most liked posts
+        public IEnumerable<Post> GetTopRatedPosts()
+        {
+            // Getting top rated posts with all its comments, hashtags, number of likes, dislikes, picture url and time its created
+            var queryPosts = client.Cypher
+                .Match("(user:User)-[r:POSTED]->(p:Post)")
+                .OptionalMatch("(p)-[:HAS_PICTURE]->(picture:Picture)")
+                .OptionalMatch("(p)-[:HAS_HASHTAG]->(hashtag:Hashtag)")
+                .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
+                .OptionalMatch("(user)-[:HAS_PROFILEPICTURE]->(profile:Picture)")
+                .OptionalMatch("(user3:User)-[like:LIKED]->(p)")
+                .OptionalMatch("(user4:User)-[dislike:DISLIKED]->(p)")
+                .OptionalMatch("(p)-[:TAGGED]->(user2:User)")
+                .With("p, user, r, picture, hashtag, profile, user2.username as taggedusers, comment, count(user3) as likes, count(user4) as dislikes")
+                .ReturnDistinct((p, r, user, picture, profile, likes, dislikes, hashtag, comment, taggedusers) => new Post
+                {
+                    id = p.As<Post>().id,
+                    timeCreated = r.As<Posted>().time,
+                    creator = user.As<User>(),
+                    creatorPict = profile.As<Picture>().url,
+                    content = p.As<Post>().content,
+                    pictureurl = picture.As<Picture>().url,
+                    dislikes = dislikes.As<int>(),
+                    likes = likes.As<int>(),
+                    hashtags = hashtag.CollectAs<Hashtag>(),
+                    comments = comment.CollectAs<Comment>(),
+                    taggedusers = taggedusers.CollectAs<string>()
+                })
+                .OrderBy("likes DESC")
+                .Limit(10)
+                .Results;
+
+            return queryPosts;
         }
 
         #endregion
@@ -464,6 +547,18 @@ namespace Databases.Neo4j
                 .Where((Comment comment) => comment.id == new Guid(id))
                 .Set("comment.text = {text}")
                 .WithParam("text", text);
+
+            query.ExecuteWithoutResults();
+        }
+
+        // Updating profile picture of user
+        public void UpdateProfilePicture(string username, string filePath)
+        {
+            var query = client.Cypher
+                .Match("(user:User)-[h:HAS_PROFILEPICTURE]->(picture:Picture)")
+                .Where((User user) => user.username == username)
+                .Set("picture.url = {url}")
+                .WithParam("url", filePath);
 
             query.ExecuteWithoutResults();
         }
@@ -496,6 +591,19 @@ namespace Databases.Neo4j
 
             query.ExecuteWithoutResults();
         }
+
+        // Deleting follow relationship
+        public void DeleteFollowRelationship(string whofollow, string tounfollow)
+        {
+            var query = client.Cypher
+                .Match("(follower:User)-[follow:FOLLOW]->(followed:User)")
+                .Where((User follower) => follower.username == whofollow)
+                .AndWhere((User followed) => followed.username == tounfollow)
+                .Delete("follow");
+
+            query.ExecuteWithoutResults();
+        }
+
         #endregion
 
 

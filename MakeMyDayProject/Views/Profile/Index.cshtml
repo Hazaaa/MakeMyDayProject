@@ -1,0 +1,124 @@
+﻿@model Databases.Neo4j.DomainModel.User
+@{
+    ViewBag.Title = "Profile";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-3 offset-1">
+        <!--PROFILE DETAILS-->
+        <div class="bg-danger" id="sideProfile" style="margin-bottom: 10px; margin-top: 20px; border: 0.3px solid gray; border-radius: 7px;">
+            <div id="sideProfilePicture" style="margin-top: 10px; margin-left: 10px;">
+                <img src="@Url.Content(Model.profilepictureurl)" id="sideProfilePictureImg" class="rounded-circle" width="60" height="60">
+            </div>
+            <div id="sideUsernameLink" style="margin-left: 90px; margin-top: -45px;">
+                <a href="/Profile/@Model.username" style="color: white; font-size: 20px; ">@Model.username</a>
+            </div>
+            <br />
+            <div id="sideUserInfo" style="text-align: left;">
+                <div id="numberOfPosts" style="color:white; margin-left: 17px; width: 33%;">
+                    <span>Posts:</span>
+                    <p style="margin-left: 15px;" id="numOfPostsP">@Model.numberofposts</p>
+                </div>
+
+                <div id="numberOfFollowers" style="color: white; margin-left: 80px; margin-top: -64px;">
+                    <span>Followers:</span>
+                    <p style="margin-left: 30px;" id="numOfFollowersProfile">@Model.followers.Count()</p>
+                </div>
+
+                <div id="numberOfFollowed" style="color: white; margin-left: 170px; margin-top: -64px;">
+                    <span>Followed:</span>
+                    <p style="margin-left: 30px;">@Model.followed.Count()</p>
+                </div>
+
+                @if (Model.username != User.Identity.Name)
+                {
+                    <div id="sideButtons" style="margin-left: 35px; margin-bottom: 10px;">
+                        @if (Model.followers.Contains(User.Identity.Name))
+                        {
+                            <button class="btn btn-outline-light" type="button" id="followButton" onclick="UnfollowUser()">Unfollow</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-light" type="button" id="followButton" onclick="FollowUser()">Follow</button>
+                        }
+
+                        <button class="btn btn-outline-light" type="button" id="messageButton">Message</button>
+                    </div>
+                }
+
+                @if (Model.username == User.Identity.Name)
+                {
+                    <div id="upladNewProfilePicture" style="margin-left: -20px;">
+                        <label for="profilePictureChange" class="custom-file-upload btn-outline-light">
+                            <i class="fas fa-user-circle"></i>
+                            Change picture
+                        </label>
+                        <input id="profilePictureChange" type="file" accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|images/*"/>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Model.username == User.Identity.Name)
+        {
+            <!--RECOMMENDED HASHTAGS FOR LOGGED USER-->
+            <div class="" id="sideUserHashtags" style="margin-bottom: 10px; margin-top: 10px; border: 0.3px solid gray; border: none;">
+                <p style="color: #dc3545; margin-left: 55px; margin-bottom: 0px;" id="hashtagText">Hashtags for you:</p>
+                <ul class="list-group align-items-center" id="sideUserHashtagsUl"></ul>
+            </div>
+
+
+            <!--USER LATEST ACTIVITIES-->
+            <div id="latestUserActivities" style="margin-bottom: 10px; margin-top: 10px; border: 0.3px solid gray; border: none;">
+                <p style="color: #dc3545; margin-left: 55px; margin-bottom: 0px;" id="activitiesText">Your latest activities:</p>
+                <ul class="list-group align-items-center" id="sideLatestActivities"></ul>
+            </div>
+        }
+    </div>
+    <div class="col-8" style="margin-bottom: 10px; margin-top: 20px;" id="postContainter">
+        @if (Model.username == User.Identity.Name)
+        {
+            <!--TEXTBOX FOR POSTING-->
+            <div class="card border-danger" style="width: 32rem; text-align: left; margin-bottom: 10px;">
+                <div class="card-body">
+                    <div class="profile-picture col-12">
+                        <img src="@Url.Content(Model.profilepictureurl)" id="newPostPicture" class="rounded-circle">
+                        <textarea title="Write # to add hashtag." form="newPostForm" rows="2" cols="20" id="newPost" class="newPostArea" placeholder="Say something funny..."></textarea>
+                    </div>
+                    <form id="newPostForm">
+                        <label for="file-upload" class="custom-file-upload btn-outline-danger">
+                            <i class="fa fa-file-picture-o"></i>
+                        </label>
+                        <input id="file-upload" type="file" accept=".jpg, .png, .jpeg, .gif, .bmp, .tif, .tiff|images/*" />
+                        <button type="button" id="uploadButton" class="btn btn-primary pull-right btn-outline-danger" style="border-radius: 7px; margin-right: 15px;">Post</button>
+                    </form>
+                    <span><p style="font-size:10px; margin-left: 68px; color: #dc3545; display: none;" id="uploadedPicutreLable">Uploaded</p></span>
+                </div>
+            </div>
+        }
+    </div>
+    <div id="loadMoreButtonContainer" class="offset-6">
+        <button type="button" class="btn btn-danger" style="margin-left: 35px" id="loadMoreUserButton">Load More</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
+    <script type="text/javascript">
+        GetPostsForProfile();
+
+        if ("@Model.username" === "@User.Identity.Name") {
+            GetUserHashtags("@User.Identity.Name");
+            GetLatestActivities();
+        }
+
+        function GetProfileUsername() {
+            return "@Model.username";
+        }
+
+        function GetLoggedUsername() {
+            return "@User.Identity.Name";
+        }
+    </script>
+}
