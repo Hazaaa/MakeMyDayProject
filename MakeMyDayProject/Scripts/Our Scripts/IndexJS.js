@@ -31,7 +31,7 @@ function GetLatestPosts(loggedin, username) {
 // Load more posts
 function LoadMorePosts() {
     var user = GetLoggedUsername();
-    var loggedin = IsLoggedin();
+    var loggedin = GetIfLogged();
     var loadMoreButton = document.getElementById("loadMoreButton");
     // Getting posts async
     $.ajax({
@@ -271,7 +271,26 @@ function LikeDislikePost(postId, choice) {
             data: { 'id': postId, 'username': GetLoggedUsername()},
             success: function (data) {
                 if (data !== null) {
-                    
+                    var likeButton = document.getElementById("like-" + postId);
+                    var dislikeButton = document.getElementById("dislike-" + postId);
+
+                    likeButton.setAttribute("disabled", "disabled");
+
+                    var valLike = likeButton.innerHTML.split('(')[1].split(')')[0];
+                    valLike++;
+
+                    likeButton.innerHTML = "<i class='fas fa-thumbs-up'></i> Likes (" + valLike + ")";
+
+                    if (dislikeButton.hasAttribute("disabled")) {
+                        dislikeButton.removeAttribute("disabled");
+
+                        var valDislike = dislikeButton.innerHTML.split('(')[1].split(')')[0];
+
+                        if (valDislike != 0)
+                            valDislike--;
+
+                        dislikeButton.innerHTML = "<i class='fas fa-thumbs-down'></i> Dislikes (" + valDislike + ")";
+                    }
                 }
                 else {
                     alert("Error while trying to like post :(");
@@ -286,7 +305,27 @@ function LikeDislikePost(postId, choice) {
             data: { 'id': postId, 'username': GetLoggedUsername() },
             success: function (data) {
                 if (data !== null) {
+                    var likeButton = document.getElementById("like-" + postId);
+                    var dislikeButton = document.getElementById("dislike-" + postId);
+
+                    dislikeButton.setAttribute("disabled", "disabled");
+
+                    var valDislike = dislikeButton.innerHTML.split('(')[1].split(')')[0];
+                    valDislike++;
+
+                    dislikeButton.innerHTML = "<i class='fas fa-thumbs-down'></i> Dislikes (" + valDislike + ")";
                     
+
+                    if (likeButton.hasAttribute("disabled")) {
+                        likeButton.removeAttribute("disabled");
+
+                        var valLike = likeButton.innerHTML.split('(')[1].split(')')[0];
+
+                        if (valLike != 0)
+                            valLike--;
+
+                        likeButton.innerHTML = "<i class='fas fa-thumbs-up'></i> Likes (" + valLike + ")";
+                    }
                 }
                 else {
                     alert("Error while trying to dislike post :(");
@@ -755,6 +794,81 @@ function AddUserHastag(hashtag, containerUl) {
     mainHashtagUl.appendChild(hashtagLink);
 }
 
+// Array that will store all usernames
+var usernames = [];
+
+function InitializeSearchInput() {
+    // Getting usernames async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/get-all-users',
+        success: function (data) {
+            if (data != null) {
+                usernames = data;
+            }
+            else
+                alert("Error while trying to search for user :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+
+    // Setting on key down event to input
+    var input = document.getElementById("inputForUserSearch");
+
+    input.onkeydown = function () {
+        var entered = input.value;
+
+        if (entered === "")
+            return;
+
+        var found = [];
+
+        var datalist = document.getElementById("usersForSearch");
+        datalist.innerHTML = "";
+
+        usernames.forEach(function (username) {
+            if (username.includes(entered) === true) {
+                var element = document.createElement("option");
+                element.value = username;
+
+                datalist.appendChild(element);
+            }
+        });
+    }
+
+    var button = document.getElementById("searchButton");
+
+    button.onclick = function () {
+
+        if (input.value === "")
+            return;
+
+        window.location.href = "../Profile/" + input.value;
+    };
+}
+
+function CountUnreadedMessages() {
+    // Getting number of unreaded messages async
+    $.ajax({
+        type: "GET",
+        url: 'http://localhost:60321/api/count-unreaded-messages',
+        success: function (data) {
+            if (data != -1) {
+                var gettingBadgeSpan = document.getElementById("unreadedMessagesBadge");
+                if (data != 0) {
+                    gettingBadgeSpan.innerHTML = data;
+                }
+            }
+            else
+                alert("Error while trying to search for user :(");
+        },
+        error: function () {
+            alert('Ajax error :(');
+        }
+    });
+}
 
 ////////////////////////////////////////////////////////////
 ///////////////PROFILE PART////////////////////////////////
@@ -1014,65 +1128,81 @@ function GetTopRatedPosts() {
     });
 }
 
-// Array that will store all usernames
-var usernames = [];
+////////////////////////////////////////////////////////////
+///////////////MESSAGES PART////////////////////////////////
+///////////////////////////////////////////////////////////
 
-function InitializeSearchInput() {
-    // Getting usernames async
-    $.ajax({
-        type: "GET",
-        url: 'http://localhost:60321/api/get-all-users',
-        success: function (data) {
-            if (data != null) {
-                usernames = data;
-            }
-            else
-                alert("Error while trying to search for user :(");
-        },
-        error: function () {
-            alert('Ajax error :(');
-        }
-    });
+// Send Message
+function SendMessage() {
+    var messageInput = document.getElementById("newMessage");
 
-    // Setting on key down event to input
-    var input = document.getElementById("inputForUserSearch");
+    if (messageInput.value !== "") {
+        $.ajax({
+            type: "POST",
+            url: '/api/send-message',
+            data: { 'reciever': GetReciever(), 'text': messageInput.value },
+            success: function (data) {
+                if (data != null) {
+                    GenerateMessageBody(data.text, data.timesent);
+                    messageInput.value = "";
 
-    input.onkeydown = function () {
-        var entered = input.value;
-
-        if (entered === "")
-            return;
-
-        var found = [];
-
-        var datalist = document.getElementById("usersForSearch");
-        datalist.innerHTML = "";
-
-        usernames.forEach(function (username) {
-            if (username.includes(entered) === true) {
-                var element = document.createElement("option");
-                element.value = username;
-
-                datalist.appendChild(element);
+                    // Scroling till end of message div
+                    var objDiv = document.getElementById("messageContainer");
+                    objDiv.scrollTop = objDiv.scrollHeight;
+                }
+                else {
+                    alert("Error while uploading comment :(");
+                }
             }
         });
     }
+    else
+        return;
+}
 
-    var button = document.getElementById("searchButton");
+// Generate new message body
+function GenerateMessageBody(text, time) {
+    var messageContainer = document.getElementById("messageContainer");
 
-    button.onclick = function () {
+    var picture = GetLoggedUserPicture();
 
-        if (input.value === "")
-            return;
+    var mainDiv = document.createElement("div");
+    mainDiv.className = "message self";
 
-        window.location.href = "../Profile/" + input.value;
-    };
+    var imageDiv = document.createElement("div");
+    imageDiv.className = "senderImage";
+
+    var image = document.createElement("img");
+    image.src = picture;
+    image.width = "40";
+    image.height = "40";
+    image.className = "rounded-circle";
+
+    imageDiv.appendChild(image);
+    mainDiv.appendChild(imageDiv);
+
+    var pForText = document.createElement("p");
+    pForText.className = "message-text";
+    pForText.innerHTML = text;
+
+    mainDiv.appendChild(pForText);
+
+    var pForTime = document.createElement("p");
+    pForTime.className = "timesent";
+    pForTime.innerHTML = time;
+
+    mainDiv.appendChild(pForTime);
+
+    messageContainer.appendChild(mainDiv);
 }
 
 // jQuery part
 $(document).ready(function () {
 
-    InitializeSearchInput();
+    if (GetIfLogged() === true) {
+        InitializeSearchInput();
+        CountUnreadedMessages();
+    }
 
     // HOME PART
     $("#uploadButton").click(UploadPost);

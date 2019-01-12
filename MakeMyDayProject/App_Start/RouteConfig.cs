@@ -19,11 +19,27 @@ namespace MakeMyDayProject
                 defaults: new { controller = "Profile", action = "Index", username = UrlParameter.Optional }
             );
 
+
+            routes.MapRoute(
+                name: "Message",
+                url: "Message/{username}",
+                defaults: new { controller = "Message", action = "Index", username = UrlParameter.Optional }
+            );
+
+
+            routes.MapRoute(
+                name: "AllMessages",
+                url: "AllMessages",
+                defaults: new { controller = "Message", action = "AllMessages"}
+            );
+
+
             routes.MapRoute(
                 name: "Hashtag",
                 url: "Hashtag/{hashtag}",
                 defaults: new { controller = "Hashtag", action = "Index", hashtag = UrlParameter.Optional }
             );
+
 
             routes.MapRoute(
                 name: "Default",

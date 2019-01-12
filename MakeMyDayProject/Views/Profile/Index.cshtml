@@ -33,7 +33,7 @@
 
                 @if (Model.username != User.Identity.Name)
                 {
-                    <div id="sideButtons" style="margin-left: 35px; margin-bottom: 10px;">
+                    <div id="sideButtons" style="margin-left: 25px; margin-bottom: 10px;">
                         @if (Model.followers.Contains(User.Identity.Name))
                         {
                             <button class="btn btn-outline-light" type="button" id="followButton" onclick="UnfollowUser()">Unfollow</button>
@@ -43,7 +43,7 @@
                             <button class="btn btn-outline-light" type="button" id="followButton" onclick="FollowUser()">Follow</button>
                         }
 
-                        <button class="btn btn-outline-light" type="button" id="messageButton">Message</button>
+                        <a class="btn btn-outline-light" href="../Message/@Model.username" id="messageButton">Message</a>
                     </div>
                 }
 
@@ -119,6 +119,13 @@
 
         function GetLoggedUsername() {
             return "@User.Identity.Name";
+        }
+
+        function GetIfLogged() {
+            if (@User.Identity.IsAuthenticated.ToString().ToLower() === true)
+                return true;
+            else
+                return false;
         }
     </script>
 }

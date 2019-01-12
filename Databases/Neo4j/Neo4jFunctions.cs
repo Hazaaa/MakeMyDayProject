@@ -124,6 +124,26 @@ namespace Databases.Neo4j
                 return true;
         }
 
+        // Creates message node
+        public bool CreateMessageNode(Message newMessage)
+        {
+            // Parameters for query need to be in dictionary
+            Dictionary<string, object> paramsDictionary = new Dictionary<string, object>();
+            paramsDictionary.Add("text", newMessage.text);
+            paramsDictionary.Add("id", newMessage.id);
+
+            // Merge helps that node is unique when creating node
+            var query = new Neo4jClient.Cypher.CypherQuery("CREATE (n:Message { id: { id } , text: { text } }) return n",
+                paramsDictionary, CypherResultMode.Set);
+
+            Message message = ((IRawGraphClient)client).ExecuteGetCypherResults<Message>(query).ToList().FirstOrDefault();
+
+            if (message == null)
+                return false;
+            else
+                return true;
+        }
+
         // Creates relationship between post and user that created post
         public void CreatePostedRelationship(Posted posted)
         { 
@@ -204,16 +224,23 @@ namespace Databases.Neo4j
         // Creates relationship between post and user that says if user liked or disliked post
         public void CreateLikedDislikedRelationship(Liked liked = null, Disliked disliked = null)
         {
+            // These queries will create Like or Dislike relationship between user and post 
+            // But if there is already like or dislike relationship between same user and post
+            // It will be deleted and new one will be created (if disliked and there is like relationship, like will be deleted and only disliked will exist)
+            // Also because of merge there will always be one like or one dislike relationship 
             if(liked != null)
             {
                 var query = client.Cypher
                     .Match("(post:Post)", "(user:User)")
+                    .OptionalMatch("(user)-[d:DISLIKED]->(post)")
+                    .With("post,user,d")
                     .Where((Post post) => post.id == liked.post.id)
                     .AndWhere((User user) => user.username == liked.user.username)
                     .Merge("(user)-[l:LIKED]->(post)")
                     .OnCreate()
                     .Set("l.time = {time}")
-                    .WithParam("time", liked.time);
+                    .WithParam("time", liked.time)
+                    .DetachDelete("d");
 
                 query.ExecuteWithoutResults();
             }
@@ -221,12 +248,15 @@ namespace Databases.Neo4j
             {
                 var query = client.Cypher
                     .Match("(post:Post)", "(user:User)")
+                    .OptionalMatch("(user)-[l:LIKED]->(post)")
+                    .With("post,user,l")
                     .Where((Post post) => post.id == disliked.post.id)
                     .AndWhere((User user) => user.username == disliked.user.username)
                     .Merge("(user)-[d:DISLIKED]->(post)")
                     .OnCreate()
                     .Set("d.time = {time}")
-                    .WithParam("time", disliked.time);
+                    .WithParam("time", disliked.time)
+                    .DetachDelete("l");
 
                 query.ExecuteWithoutResults();
             }
@@ -251,16 +281,6 @@ namespace Databases.Neo4j
             // Firts create comment node
             CreateCommentNode(hasComment.comment);
 
-            //var query = client.Cypher
-            //    .Match("(user:User)", "(post:User)", "(comment:Comment)")
-            //    .Where((User user) => user.username == commented.commentator.username)
-            //    .AndWhere((Comment comment) => comment.id == hasComment.comment.id)
-            //    .AndWhere((Post post) => post.id == hasComment.post.id)
-            //    .Create("(post)-[r:HAS_COMMENT {time: '" + hasComment.time + "'}]->(comment)")
-            //    .Create("(user)-[ro:COMMENTED {time: '" + commented.time + "'}]->(comment)");
-
-            //query.ExecuteWithoutResults();
-
             // Parameters for query need to be in dictionary
             Dictionary<string, object> paramsDictionary = new Dictionary<string, object>();
             paramsDictionary.Add("text", hasComment.comment.text);
@@ -276,6 +296,32 @@ namespace Databases.Neo4j
             Comment comment = ((IRawGraphClient)client).ExecuteGetCypherResults<Comment>(query).ToList().FirstOrDefault();
 
             if (comment != null)
+                return true;
+            else
+                return false;
+        }
+
+        // Creates relationship between user that sends message and message node and also between user that recieve message and message node
+        public bool CreateSendRecieveRelationships(Send send, Recieve recieve)
+        {
+            // First create message node
+            CreateMessageNode(send.message);
+
+            // Parameters for query need to be in dictionary
+            Dictionary<string, object> paramsDictionary = new Dictionary<string, object>();
+            paramsDictionary.Add("senderusername", send.sender.username);
+            paramsDictionary.Add("recieverusername", recieve.reciever.username);
+            paramsDictionary.Add("messageid", send.message.id);
+            paramsDictionary.Add("time", send.time);
+
+            var query = new Neo4jClient.Cypher.CypherQuery("match (sender:User), (message:Message), (reciever:User) " +
+                "where sender.username = {senderusername} and reciever.username = {recieverusername} and message.id = {messageid}" +
+                " create (sender)-[r:SEND {time: {time}}]->(message)-[ro:RECIEVE {time: {time}}]->(reciever) return message",
+                paramsDictionary, CypherResultMode.Set);
+
+            Message message = ((IRawGraphClient)client).ExecuteGetCypherResults<Message>(query).ToList().FirstOrDefault();
+
+            if (message != null)
                 return true;
             else
                 return false;
@@ -308,12 +354,12 @@ namespace Databases.Neo4j
                 .OptionalMatch("(user)-[followed:FOLLOW]->(user2:User)")
                 .OptionalMatch("(user3:User)-[follower:FOLLOW]->(user)")
                 .With("user, picture, user2.username as userFollow, user3.username as userFollower, count(posted) as numOfPosts")
-                .Return((user, userFollow, userFollower, numOfPosts, picture) => new User
+                .ReturnDistinct((user, userFollow, userFollower, numOfPosts, picture) => new User
                 {
                     aspid = user.As<User>().aspid,
                     username = user.As<User>().username,
-                    followed = userFollow.CollectAs<string>(),
-                    followers = userFollower.CollectAs<string>(),
+                    followed = userFollow.CollectAsDistinct<string>(),
+                    followers = userFollower.CollectAsDistinct<string>(),
                     numberofposts = numOfPosts.As<int>(),
                     profilepictureurl = picture.As<Picture>().url
                 })
@@ -478,13 +524,15 @@ namespace Databases.Neo4j
                 .OptionalMatch("(p)-[:HAS_COMMENT]->(comment:Comment)")
                 .OptionalMatch("(user)-[like:LIKED]->(p)")
                 .OptionalMatch("(user)-[dislike:DISLIKED]->(p)")
+                .OptionalMatch("(user)-[:HAS_PROFILEPICTURE]->(profile:Picture)")
                 .OptionalMatch("(p)-[:TAGGED]->(user2:User)")
-                .With("p, user, r, picture, hashtag, user2.username as taggedusers, comment, count(like) as likes, count(dislike) as dislikes")
-                .ReturnDistinct((p, r, user, picture, likes, dislikes, hashtag, comment, taggedusers) => new Post
+                .With("p, user, r, picture, profile, hashtag, user2.username as taggedusers, comment, count(like) as likes, count(dislike) as dislikes")
+                .ReturnDistinct((p, r, user, profile, picture, likes, dislikes, hashtag, comment, taggedusers) => new Post
                 {
                     id = p.As<Post>().id,
                     timeCreated = r.As<Posted>().time,
                     creator = user.As<User>(),
+                    creatorPict = profile.As<Picture>().url,
                     content = p.As<Post>().content,
                     pictureurl = picture.As<Picture>().url,
                     dislikes = dislikes.As<int>(),
@@ -532,6 +580,42 @@ namespace Databases.Neo4j
                 .Results;
 
             return queryPosts;
+        }
+
+        // Returns all messages between two users
+        public IEnumerable<Message> GetAllMessagesBetweenUsers(string senderUsername, string recieverUsername)
+        {
+            var query = client.Cypher
+                .Match("(sender:User)-[send:SEND]->(message:Message)-[recieve:RECIEVE]->(reciever:User)")
+                .Where((User sender) => sender.username == senderUsername || sender.username == recieverUsername)
+                .AndWhere((User reciever) => reciever.username == recieverUsername || reciever.username == senderUsername)
+                .OptionalMatch("(sender)-[:HAS_PROFILEPICTURE]->(picture:Picture)")
+                .With("sender, message, reciever, send.time as timeSended, picture.url as senderPic")
+                .Return((message, sender, reciever, timeSended, senderPic) => new Message
+                {
+                    id = message.As<Message>().id,
+                    text = message.As<Message>().text,
+                    reciever = reciever.As<User>(),
+                    sender = sender.As<User>(),
+                    senderPic = senderPic.As<string>(),
+                    timesent = timeSended.As<string>()
+                })
+                .OrderBy("timeSended ASC")
+                .Results;
+
+            return query;
+        }
+
+        // Returns profilepicture url for user
+        public Picture GetUserProfilePicture(string username)
+        {
+            var query = client.Cypher
+                .Match("(user:User)-[:HAS_PROFILEPICTURE]->(picture:Picture)")
+                .Where((User user) => user.username == username)
+                .Return<Picture>("picture")
+                .Results;
+
+            return query.FirstOrDefault();
         }
 
         #endregion
@@ -603,11 +687,6 @@ namespace Databases.Neo4j
 
             query.ExecuteWithoutResults();
         }
-
-        #endregion
-
-
-        #region Help functions
 
         #endregion
     }

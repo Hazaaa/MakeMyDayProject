@@ -205,6 +205,7 @@
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ManageController.cs" />
     <Compile Include="Controllers\DataController.cs" />
+    <Compile Include="Controllers\MessageController.cs" />
     <Compile Include="Controllers\ProfileController.cs" />
     <Compile Include="Controllers\TopRatedController.cs" />
     <Compile Include="Global.asax.cs">
@@ -331,6 +332,8 @@
     <Content Include="Views\Profile\Index.cshtml" />
     <Content Include="Views\Hashtag\Index.cshtml" />
     <Content Include="Views\TopRated\Index.cshtml" />
+    <Content Include="Views\Message\Index.cshtml" />
+    <Content Include="Views\Message\AllMessages.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

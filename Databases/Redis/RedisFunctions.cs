@@ -160,5 +160,30 @@ namespace Databases.Redis
         {
             return redis.GetAllItemsFromList("usersforsearch");
         }
+
+        // Saving username of user that sended a message so user reciever can be informed how many unreaded messages he has and from whom
+        public void PushNewUnreadMessage(string user, string fromUser)
+        {
+            // With this redis will try to find this user in sorted set and increment it with 1 but if it doesn't exists he will add it as new one with score 1
+            redis.IncrementItemInSortedSet("user:" + user + ":unreadmessages", fromUser, 1);
+        }
+
+        // Getting all number of unreaded messages with users who sent them
+        public IDictionary<string, double> GetAllUnereadedMessagesInfo(string user)
+        {
+            return redis.GetAllWithScoresFromSortedSet("user:" + user + ":unreadmessages");
+        }
+
+        // When unreaded messages are read then we set score to 0 for that user
+        public void RemoveUnreadMessages(string user, string fromUser)
+        {
+            // ZADD options but only for Redis 3.0.2
+            // XX: Only update elements that already exist. Never add elements.
+            // NX: Don't update already existing elements. Always add new elements.
+
+            // Because in this redis client isn't available ZADD options then if key exists in list we remove it and then add it with score 0 because there is no update in redis sorted set
+            if(redis.RemoveItemFromSortedSet("user:" + user + ":unreadmessages", fromUser))
+                redis.AddItemToSortedSet("user:" + user + ":unreadmessages", fromUser, 0);
+        }
     }
 }

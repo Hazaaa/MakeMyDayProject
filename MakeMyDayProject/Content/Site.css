@@ -77,3 +77,69 @@ input[type="text"]:disabled {
     margin-left: 20px;
 }
 
+.newMessageArea {
+    max-width: 385px;
+    min-height: 50px;
+    width: 100%;
+    resize: vertical;
+    border-radius: 7px;
+}
+
+.message {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.message-text {
+    width: 50%;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.friend .message-text {
+    color: white;
+    margin-bottom: 0;
+    margin-left: 10px;
+    margin-top: 0;
+}
+
+.self .message-text {
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    margin-bottom: 0;
+    margin-left: 300px;
+    margin-right: 10px;
+    order: -1;
+}
+
+.messageInput {
+    margin-left: 250px;
+}
+
+.timesent {
+    font-size: 10px;
+    color: silver;
+}
+
+.self .timesent {
+    margin-left: 310px;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.friend .timesent {
+    padding: 0;
+    margin-bottom: 0;
+    width: 100%;
+    margin-left: 60px;
+}
+
+#messageContainer {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    height: 400px;
+}
+
+

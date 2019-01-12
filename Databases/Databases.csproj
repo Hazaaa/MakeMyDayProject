@@ -93,6 +93,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Neo4j\DomainModel\Comment.cs" />
+    <Compile Include="Neo4j\DomainModel\Message.cs" />
     <Compile Include="Neo4j\DomainModel\Relationships\Commented.cs" />
     <Compile Include="Neo4j\DomainModel\Relationships\Follow.cs" />
     <Compile Include="Neo4j\DomainModel\Relationships\HasComment.cs" />
@@ -104,6 +105,8 @@
     <Compile Include="Neo4j\DomainModel\Relationships\HasProfilePicture.cs" />
     <Compile Include="Neo4j\DomainModel\Relationships\LikedDisliked.cs" />
     <Compile Include="Neo4j\DomainModel\Relationships\Posted.cs" />
+    <Compile Include="Neo4j\DomainModel\Relationships\Recieve.cs" />
+    <Compile Include="Neo4j\DomainModel\Relationships\Send.cs" />
     <Compile Include="Neo4j\DomainModel\Relationships\Tagged.cs" />
     <Compile Include="Neo4j\DomainModel\User.cs" />
     <Compile Include="Neo4j\Neo4jFunctions.cs" />

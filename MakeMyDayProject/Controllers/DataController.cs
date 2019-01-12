@@ -193,6 +193,36 @@ namespace MakeMyDayProject.Controllers
             }
         }
 
+        [Route("api/get-all-messages/{reciever}")]
+        [HttpGet]
+        public IEnumerable<Message> GetAllMessages(string reciever)
+        {
+            try
+            {
+                return neo4j.GetAllMessagesBetweenUsers(User.Identity.Name, reciever);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [Route("api/count-unreaded-messages")]
+        [HttpGet]
+        public double CountUnreadedMessages()
+        {
+            try
+            {
+                var unreadedMessagesValues = redis.GetAllUnereadedMessagesInfo(User.Identity.Name).Values.ToList().Sum();
+
+                return unreadedMessagesValues;
+            }
+            catch (Exception)
+            {
+                return -1;
+            }
+        }
+
         #endregion
 
         #region POST
@@ -471,6 +501,37 @@ namespace MakeMyDayProject.Controllers
             catch (Exception ex)
             {
                 return ex.Message;
+            }
+        }
+
+        [Route("api/send-message")]
+        [HttpPost]
+        public Message SendMessage()
+        {
+            try
+            {
+                var sender = neo4j.GetUser(User.Identity.Name);
+                var reciever =  neo4j.GetUser(HttpContext.Current.Request["reciever"]);
+                var messageText = HttpContext.Current.Request["text"];
+
+                Message message = new Message { text = messageText };
+
+                neo4j.CreateSendRecieveRelationships(new Databases.Neo4j.DomainModel.Relationships.Send { message = message, sender = sender, time = DateTime.Now.ToString() },
+                    new Databases.Neo4j.DomainModel.Relationships.Recieve { message = message, reciever = reciever, time = DateTime.Now.ToString() });
+
+                redis.PushNewUnreadMessage(reciever.username, User.Identity.Name);
+
+                message.timesent = DateTime.Now.ToString();
+
+                redis.PushLatestActivity(reciever.username, "You recieved new message from " + User.Identity.Name + ".");
+
+                return message;   
+            }
+            catch (Exception)
+            {
+
+                return null;
+
             }
         }
 

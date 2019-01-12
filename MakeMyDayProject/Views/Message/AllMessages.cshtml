@@ -1,0 +1,44 @@
+﻿@model List<KeyValuePair<string,double>>
+@{
+    ViewBag.Title = "AllMessages";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<br />
+<h2 style="color: #dc3545;">All Messages:</h2>
+<hr />
+
+<div class="row">
+    <div class="col-4 offset-4" style="margin-bottom: 10px; margin-top: 20px;" id="unereadedMessagesList">
+        <span style="color: #dc3545; margin-left: 20px; margin-bottom: 10px;">From:</span>
+        <ul class="list-group" style="margin-top: 5px;">
+            @foreach (var item in Model)
+            {
+                <a href="../Message/@item.Key" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    @item.Key
+                    @if (item.Value != 0)
+                    {
+                        <span class="badge badge-primary badge-pill">@item.Value new</span>
+                    }
+                </a>
+            }
+        </ul>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
+    <script type="text/javascript">
+
+        function GetLoggedUsername() {
+            return "@User.Identity.Name";
+        }
+
+        function GetIfLogged() {
+            if (@User.Identity.IsAuthenticated.ToString().ToLower() === true)
+                return true;
+            else
+                return false;
+        }
+    </script>
+}

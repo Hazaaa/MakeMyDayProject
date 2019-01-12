@@ -1,0 +1,88 @@
+﻿@model IEnumerable<Databases.Neo4j.DomainModel.Message>
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<br />
+<h2 style="color: #dc3545;">Messages with <a href="../Profile/@ViewBag.reciever" style="color: #dc3545;">@ViewBag.reciever</a></h2>
+<hr />
+<div class="row">
+    <div class="col-8 offset-2" style="margin-bottom: 10px; margin-top: 20px;" id="messageContainer">
+
+        <!--MESSAGES-->
+        @for (int i = 0; i < Model.Count(); i++)
+        {
+            var message = Model.ElementAt(i);
+            if (message.sender.username == User.Identity.Name)
+            {
+                <div class="message self">
+                    @if ((i == 0) || message.sender.username != Model.ElementAt(i - 1).sender.username)
+                    {
+                        <div class="senderImage">
+                            <img src="@message.senderPic.Replace('~',' ')" alt="@message.sender.username" width="40" height="40" class="rounded-circle" />
+                        </div>
+                    }
+                    <p class="message-text">@message.text</p>
+                    <p class="timesent">@message.timesent</p>
+                </div>
+            }
+            else
+            {
+                <div class="message friend">
+                    @if ((i == 0) || message.sender.username != Model.ElementAt(i - 1).sender.username)
+                    {
+                        <div class="recieverImage">
+                            <img src="@message.senderPic.Replace('~',' ')" alt="@message.sender.username" width="40" height="40" class="rounded-circle" />
+                        </div>
+                    }
+                    else
+                    {
+                        <img src="@message.senderPic.Replace('~',' ')" alt="@message.sender.username" width="40" height="40" class="rounded-circle" style="visibility: hidden;" />
+                    }
+                    <p class="message-text bg-danger">@message.text</p>
+                    <p class="timesent">@message.timesent</p>
+                </div>
+            }
+        }
+    </div>
+    <div class="col-8 offset-2">
+        <hr />
+        <!--INPUT FOR NEW MESSAGE-->
+        <div id="newMessageDiv" class="messageInput">
+            <img src="@ViewBag.loggedPicture" width="40" height="40" class="rounded-circle" style="margin-top: 20px; border: 0.5px solid silver;">
+            <textarea title="Type something to send to @ViewBag.reciever" rows="2" cols="20" id="newMessage" class="newMessageArea" placeholder="Type something to send to @ViewBag.reciever ..." style="border-color: #dc3545;"></textarea>
+            <button class="btn btn-outline-danger" id="messageButton" style="border-radius: 30px; margin-bottom: 30px; margin-left: 0px;" onclick="SendMessage()"><i class="fas fa-comment-alt fa-xs"></i></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="~/Scripts/Our Scripts/IndexJS.js"></script>
+    <script type="text/javascript">
+
+        function GetLoggedUsername() {
+            return "@User.Identity.Name";
+        }
+
+        function GetLoggedUserPicture() {
+            return "@ViewBag.loggedPicture";
+        }
+
+        function GetReciever() {
+            return "@ViewBag.reciever";
+        }
+
+        function GetIfLogged() {
+            if (@User.Identity.IsAuthenticated.ToString().ToLower() === true)
+                return true;
+            else
+                return false;
+        }
+
+        // Scroling till end of message div
+        var objDiv = document.getElementById("messageContainer");
+        objDiv.scrollTop = objDiv.scrollHeight;
+    </script>
+}
+

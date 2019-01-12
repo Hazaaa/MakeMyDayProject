@@ -93,8 +93,11 @@
             return "@User.Identity.Name";
         }
 
-        function IsLoggedin() {
-            return @Request.IsAuthenticated.ToString().ToLower();
+        function GetIfLogged() {
+            if (@User.Identity.IsAuthenticated.ToString().ToLower() === true)
+                return true;
+            else
+                return false;
         }
     </script>
 }
